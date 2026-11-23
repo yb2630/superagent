@@ -91,12 +91,12 @@ and BigCodeBench is our library-call stress case.
 \paragraph{Levels by field deletion.}
 Each specification is parsed into intent, signature and types, examples, constraints and edge
 cases, and error behaviour. L0 is full; L1 drops examples and type detail; L2 additionally drops
-constraints and error behaviour; L3 keeps only intent. Deleted fields are the detector labels,
-and single-field drops L2$_c$ remove one category from L0. The design uses the \emph{task
+constraints and error behaviour; L3 keeps only intent. Labels are field presence in L0; single-field drops L2$_c$ remove one category from L0. The design uses the \emph{task
 sentence} as intent, not the first sentence: HumanEval/104's first sentence only says ``Given a
 list of positive integers x.'', while its task sentence states the requirement. The committed R0
-artifact still applies a first-sentence rule, so HumanEval/104's L3 is that precondition; the
-prepared pilot uses this known-imperfect wish, and a task-sentence extractor is future work.
+artifact still applies a first-sentence rule on HumanEval+ and MBPP+ (HumanEval/104's L3 is
+that precondition); the prepared pilot uses this imperfect wish, and a task-sentence extractor
+remains future work.
 
 \paragraph{Visible tests.}
 Visible tests come from the hidden suite and are fixed across levels. The design wants them
@@ -120,22 +120,22 @@ and a defensive-coding instruction.
 H0 is the plain loop; H1 writes acceptance tests first; H2 asks generic questions; H3 asks
 detector-targeted questions; H4 exposes sibling functions; H5, planned, evolves the harness
 offline on 200 development wishes with RRSI's edits \citep{xia2026rrsi}. B1 gives L0 as the
-ceiling; B2 spends the budget on extra samples; B3 is a frontier model given only the wish;
+ceiling; B2 spends the budget on extra samples; B3 is a frontier model given only the wish and stub;
 DISCARD asks H3's questions and withholds answers. The prepared pilot runs H0--H4, B1--B3, and
 DISCARD. Harness$^2$ evolves harnesses without ground-truth verifiers, reporting up to 11.5
 points on WorkBuddy-Bench, 4.5 on JobBench, and 11.8 percentage points on LAB
 \citep{xu2026harness2}. HarnessPro evolves harnesses label-free with LLM-generated executable
 tests instead of an LLM judge, reporting +2.0 percentage points and 26.1\% lower per-task cost
-than RHO in its heavy mode \citep{pan2026harnesspro}. H5 is verifier-free, so these works bound it.
+than RHO in its heavy mode \citep{pan2026harnesspro}. H5 is an offline evolution step, so these works bound it.
 
 \section{Experiments}
 
 \paragraph{Data and splits.}
 Of 1{,}682 source rows, 1{,}676 parse and 1{,}573 validate; 1{,}100 are kept (157 HumanEval+,
-377 MBPP+, 566 BigCodeBench), with 109 exclusions. The split is 500 train, 200 evolution, 300
+377 MBPP+, 566 BigCodeBench). The split is 500 train, 200 evolution, 300
 held-out, and a disjoint 100-task pilot (seed 20261121). Kept-set prevalence is 1.000 (intent,
 signature/types), 0.973 (examples), 0.645 (constraints), and 0.134 (error behaviour); error
-behaviour has 63 train and 147 kept positives. Held-out tasks are untouched.
+behaviour has 63 train and 147 kept positives.
 
 \paragraph{Detector results.}
 Table~\ref{tab:detector} gives five-fold out-of-fold detection. The
@@ -176,8 +176,8 @@ We will run the prepared pilot, then scale to the 300 held-out tasks and more se
 replace the first-sentence L3 with a task-sentence extractor and make visible tests disjoint from
 examples; MBPP+ duplicates its test list in both fields. We will run H5, finish DISCARD, compare
 the encoder with TF-IDF, and add a source with explicit error-behaviour annotations. The
-proposal-feedback changes are in place: mechanical field deletion replaced LLM rewriting, and
-the harness question is the H4 experiment; the pilot will settle it.
+proposal-feedback changes are in place: field deletion replaced LLM rewriting, and the harness
+question is the H4 experiment; the pilot will settle it.
 
 \bibliographystyle{unsrt}
 \bibliography{references}

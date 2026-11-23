@@ -1,0 +1,86 @@
+{
+  "all_tasks": {
+    "by_source": {
+      "bigcodebench": {
+        "literal_visible_calls": 1006,
+        "matching_calls": 109,
+        "rate": 0.1083,
+        "tasks": 566,
+        "tasks_with_examples": 149,
+        "tasks_with_literal_visible_calls": 357,
+        "tasks_with_overlap": 70
+      },
+      "humanevalplus": {
+        "literal_visible_calls": 471,
+        "matching_calls": 71,
+        "rate": 0.1507,
+        "tasks": 157,
+        "tasks_with_examples": 65,
+        "tasks_with_literal_visible_calls": 157,
+        "tasks_with_overlap": 44
+      },
+      "mbppplus": {
+        "literal_visible_calls": 1131,
+        "matching_calls": 1131,
+        "rate": 1.0,
+        "tasks": 377,
+        "tasks_with_examples": 377,
+        "tasks_with_literal_visible_calls": 377,
+        "tasks_with_overlap": 377
+      }
+    },
+    "split": "all",
+    "totals": {
+      "literal_visible_calls": 2608,
+      "matching_calls": 1311,
+      "rate": 0.5027,
+      "tasks": 1100,
+      "tasks_with_examples": 591,
+      "tasks_with_literal_visible_calls": 891,
+      "tasks_with_overlap": 491
+    }
+  },
+  "method": "a visible call matches when its literal argument tuple also appears in a call in fields.examples; calls with non-literal arguments are omitted",
+  "pilot_control": {
+    "by_source": {
+      "bigcodebench": {
+        "literal_visible_calls": 88,
+        "matching_calls": 13,
+        "rate": 0.1477,
+        "tasks": 52,
+        "tasks_with_examples": 14,
+        "tasks_with_literal_visible_calls": 29,
+        "tasks_with_overlap": 7
+      },
+      "humanevalplus": {
+        "literal_visible_calls": 42,
+        "matching_calls": 6,
+        "rate": 0.1429,
+        "tasks": 14,
+        "tasks_with_examples": 5,
+        "tasks_with_literal_visible_calls": 14,
+        "tasks_with_overlap": 4
+      },
+      "mbppplus": {
+        "literal_visible_calls": 102,
+        "matching_calls": 102,
+        "rate": 1.0,
+        "tasks": 34,
+        "tasks_with_examples": 34,
+        "tasks_with_literal_visible_calls": 34,
+        "tasks_with_overlap": 34
+      }
+    },
+    "split": "pilot",
+    "totals": {
+      "literal_visible_calls": 232,
+      "matching_calls": 121,
+      "rate": 0.5216,
+      "tasks": 100,
+      "tasks_with_examples": 53,
+      "tasks_with_literal_visible_calls": 77,
+      "tasks_with_overlap": 45
+    }
+  },
+  "source": "results/levels/tasks.jsonl"
+}

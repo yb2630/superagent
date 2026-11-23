@@ -70,121 +70,114 @@
 
 \begin{abstract}
 Wish-driven programming---stating an intent and letting an agent build the artifact---fails
-quietly: the program runs, passes the tests the user remembered to mention, and violates a
-requirement nobody wrote down. We degrade benchmark specifications into wishes by deleting
-fields mechanically and train a small
-\emph{silence detector} that predicts which requirement categories a wish leaves implicit and
-uses that prediction to target clarification questions. In a 100-task pilot, targeted
-questioning recovers 59\% of the specification--wish gap with 2.6 questions per task, against
-42\% for generic clarification at 4.1 questions, while a harness that can read neighbouring
-code recovers 19\%.
+quietly: the program runs and still violates unwritten requirements. We delete fields
+from full specifications mechanically and train a small \emph{silence detector} to predict which
+requirement categories a wish leaves implicit, then target clarification questions. This
+milestone reports committed artifacts only: 1{,}100 kept tasks, a five-fold out-of-fold detector,
+a 45-unit dry run, and a prepared but unrun 100-task pilot. The encoder reaches macro-F1 0.777
+(0.629 varying) and AUROC 0.778/0.947/0.736 for examples/constraints/error behaviour; TF-IDF
+reaches 0.782/0.909/0.959/0.734, so the encoder is not the strongest detector. No
+condition-level results exist yet.
 \end{abstract}
 
 \section{Approach}
 
 \paragraph{Task and unit.}
-The agent receives a one-sentence wish and a Python file containing a function stub, and must
-produce an implementation that passes a hidden unit-test suite. The unit is one function
-with three visible tests, so the hidden suite is a clean oracle. We use HumanEval+ and MBPP+ \citep{liu2023evalplus} and BigCodeBench; the first two
-pair a docstring with one function; BigCodeBench composes several library calls and is our
-stress case.
+The agent receives a one-sentence wish and a Python stub and must pass a hidden unit-test suite.
+A unit is one function with a shared stub, visible tests, and hidden suite. We use HumanEval+ and
+MBPP+ \citep{liu2023evalplus} plus BigCodeBench; the first two pair a docstring with one function,
+and BigCodeBench is our library-call stress case.
 
 \paragraph{Levels by field deletion.}
-Each docstring is parsed into five fields---intent, signature and types, examples, constraints
-and edge cases, error behaviour---and levels are built by deleting fields: L0 is the full
-specification, L1 drops examples and type detail, L2 additionally drops constraints and error
-behaviour, and L3 keeps only the intent, smoothed into a natural wish by a language model. The
-hidden tests are identical across levels, so any L0--L3 difference is information loss rather
-than test variation, and the deleted fields are exactly the labels for the detector. One-field
-drops L2$_c$ remove a single category, which lets us attribute recovery to that category.
+Each specification is parsed into intent, signature and types, examples, constraints and edge
+cases, and error behaviour. L0 is full; L1 drops examples and type detail; L2 additionally drops
+constraints and error behaviour; L3 keeps only intent. Deleted fields are the detector labels,
+and single-field drops L2$_c$ remove one category from L0. The design uses the \emph{task
+sentence} as intent, not the first sentence: HumanEval/104's first sentence only says ``Given a
+list of positive integers x.'', while its task sentence states the requirement. The committed R0
+artifact still applies a first-sentence rule, so HumanEval/104's L3 is that precondition; the
+prepared pilot uses this known-imperfect wish, and a task-sentence extractor is future work.
 
-\paragraph{Harness.}
-The agent is a ReAct loop with four tools---write the file, run the visible tests, read the
-error, ask the stakeholder---capped at twelve turns, with no repository to browse. The
-restriction is deliberate: a codebase would let the agent recover deleted requirements from
-neighbouring code, which is the effect we want to measure. Contemporary
-harnesses revise their own state online \citep{xiao2026reharness}; we hold harness state fixed so
-that only the prompt varies, and test the browsing assumption directly in condition H4. The
-stakeholder is a language model given the L0 specification and told to answer only from it,
-following the protocol of \citep{mu2023clarifygpt}.
+\paragraph{Visible tests.}
+Visible tests come from the hidden suite and are fixed across levels. The design wants them
+disjoint from the examples; the artifact does not. Of 2{,}608 visible calls with
+literal arguments, 1{,}311 (50.3\%) also occur in the examples, and MBPP+ contributes 1{,}131 of
+1{,}131 because its examples field is the test list. On the disjoint 100-task pilot control the
+overlap is 121 of 232 (52.2\%). We report the measurement instead of asserting disjointness.
 
-\paragraph{Detector and how it changes the program.}
-The detector is a frozen Qwen3-Embedding-0.6B encoder with a five-way multi-label head, trained
-with binary cross-entropy on the deletion labels and calibrated on a development split. It does
-not touch weights; it changes conditioning in three places. It ranks the categories a wish most
-likely omits and selects which of five question templates is asked; the answers are compiled
-into a \emph{Requirements} block that conditions the code prompt and is reused as acceptance
-criteria in one self-check-and-repair pass; and any category still unanswered when the question
-budget is spent triggers a defensive-coding instruction. A discard condition asks the same
-questions but drops the answers, separating asking from knowing.
+\paragraph{Harness and detector.}
+The agent is a ReAct loop with write, run-visible-tests, read-error and ask-stakeholder tools, a
+fixed turn cap, and no repository; H4 gives sibling functions. The stakeholder sees L0 and
+answers only from it \citep{mu2023clarifygpt}. Contemporary harnesses revise state
+online \citep{xiao2026reharness}; we hold harness state fixed. The detector is a frozen
+Qwen3-Embedding-0.6B encoder with a multi-label head, BCE and an L2 penalty, evaluated five-fold
+out-of-fold with inner-fold calibration. A positive label means the category has
+L0 content the wish omits. The H3 policy ranks categories by calibrated presence times utility, asks
+2.47 questions per task on average, and never asks intent; answers become a Requirements block
+and a defensive-coding instruction.
 
-\paragraph{Conditions and baselines.}
+\paragraph{Conditions and related work.}
 H0 is the plain loop; H1 writes acceptance tests first; H2 asks generic questions; H3 asks
-detector-targeted questions; H4 exposes five sibling functions with doctests; H5, not yet run,
-evolves the harness offline on 200 development wishes with RRSI's edits and regularized
-selection \citep{xia2026rrsi}. B1 gives L0 with no dialogue (the ceiling); B2 spends the same
-budget on extra samples instead of questions; B3 is a frontier model given only the wish. All conditions share tasks, tools, and tests.
+detector-targeted questions; H4 exposes sibling functions; H5, planned, evolves the harness
+offline on 200 development wishes with RRSI's edits \citep{xia2026rrsi}. B1 gives L0 as the
+ceiling; B2 spends the budget on extra samples; B3 is a frontier model given only the wish;
+DISCARD asks H3's questions and withholds answers. The prepared pilot runs H0--H4, B1--B3, and
+DISCARD. Harness$^2$ evolves harnesses without ground-truth verifiers, reporting up to 11.5
+points on WorkBuddy-Bench, 4.5 on JobBench, and 11.8 percentage points on LAB
+\citep{xu2026harness2}. HarnessPro evolves harnesses label-free with LLM-generated executable
+tests instead of an LLM judge, reporting +2.0 percentage points and 26.1\% lower per-task cost
+than RHO in its heavy mode \citep{pan2026harnesspro}. H5 is verifier-free, so these works bound it.
 
 \section{Experiments}
 
-\paragraph{Data and metrics.}
-From roughly 1{,}000 tasks, 500 train the detector, 200 wishes evolve the harness, and 300
-held-out tasks evaluate. The pilot uses 100 development tasks and one seed; the 300-task test
-split stays untouched until the final report, and every headline number will average two seeds.
-100 level rewrites were hand-checked, and a round-trip check confirms that a model given L3 fails
-the hidden tests more often than one given L0. Primary metrics are pass@1 and
-\emph{recovery}, the fraction of the L0--L3 gap closed, plus per-category recovery on the
-single-field drops. Failures are bucketed by the exception the runner raises, which says why a
-category is hard rather than only that it is.
+\paragraph{Data and splits.}
+Of 1{,}682 source rows, 1{,}676 parse and 1{,}573 validate; 1{,}100 are kept (157 HumanEval+,
+377 MBPP+, 566 BigCodeBench), with 109 exclusions. The split is 500 train, 200 evolution, 300
+held-out, and a disjoint 100-task pilot (seed 20261121). Kept-set prevalence is 1.000 (intent,
+signature/types), 0.973 (examples), 0.645 (constraints), and 0.134 (error behaviour); error
+behaviour has 63 train and 147 kept positives. Held-out tasks are untouched.
 
-\paragraph{Implementation.}
-The generator is Qwen3-8B (AWQ) on vLLM, one 24\,GB GPU, temperature 0.7, top-$p$ 0.95, at most
-twelve turns, three samples per task; the detector trains three epochs (AdamW,
-$2\times10^{-4}$, batch 32). The pilot took
-about 18 GPU-hours.
+\paragraph{Detector results.}
+Table~\ref{tab:detector} gives five-fold out-of-fold detection. The
+encoder reaches macro-F1 0.777 (0.629 varying) and AUROC 0.778/0.947/0.736 for examples,
+constraints, and error behaviour. TF-IDF reaches 0.782/0.909/0.959/0.734, and the prior baseline 0.753/0.588. The encoder is 0.004/0.131/0.012 below TF-IDF on
+macro-F1/examples/constraints and slightly above on error behaviour (0.736 vs 0.734);
+calibration is comparable (Brier 0.042 vs 0.041, ECE 0.012 vs 0.013). We treat this gap as a
+limitation.
 
-% TODO: every number in this table is illustrative -- replace with your own pilot runs before submitting.
-\begin{center}
-  \small
-  \begin{tabular}{@{}llrrr@{}}
+\begin{table}[!ht]
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}lccccc@{}}
     \toprule
-    Condition & Description & pass@1 & Recovery & Questions \\
+    Method & macro-F1 & macro-F1 (varying) & AUROC examples & AUROC constraints & AUROC error \\
     \midrule
-    L0 (B1) & full specification, no dialogue & 61.2 & 1.00 & 0 \\
-    H0 & ReAct, no questions & 22.4 & 0.00 & 0 \\
-    H1 & acceptance tests first & 24.1 & 0.04 & 0 \\
-    H2 & generic clarification & 38.7 & 0.42 & 4.1 \\
-    H3 & detector-targeted clarification & 45.3 & 0.59 & 2.6 \\
-    H4 & context-rich (sibling functions) & 29.8 & 0.19 & 0 \\
+    Prior & 0.753 & 0.588 & 0.358 & 0.426 & 0.409 \\
+    TF-IDF & 0.782 & 0.636 & 0.909 & 0.959 & 0.734 \\
+    Encoder & 0.777 & 0.629 & 0.778 & 0.947 & 0.736 \\
     \bottomrule
   \end{tabular}
-  \vspace{2pt}
+  \caption{Five-fold out-of-fold detection on the 500 training tasks. ``Varying'' averages
+  examples, constraints and error behaviour; intent and signature/types are positive on every
+  task, so their AUROC is undefined. Source: \texttt{results/detector/metrics.json}.}
+  \label{tab:detector}
+\end{table}
 
-  {\footnotesize\raggedright\textbf{Table 1.} Pilot results on 100 development tasks, single seed.
-  Recovery is the share of the L0--L3 gap closed; questions are averaged per task.\par}
-\end{center}
-
-\paragraph{Results and discussion.}
-Asking beats browsing: H3 closes 59\% of the gap, H4 only 19\%. Targeting also buys efficiency: 2.6 questions against 4.1 for H2. The surprise is how much gap
-survives: H3 remains 16 points below the ceiling. The detector is uneven, with macro-F1 0.71 and
-per-category AUROC from 0.86 for error behaviour to 0.68 for I/O format. Error attribution
-explains the residual: of H3's failures on error-behaviour items, 41\% end in ValueError and
-27\% in AssertionError---the agent asked, got an answer about invalid input, and still did not
-implement the validation. That failure moves the problem from information to harness, which is
-what H5 is for.
+\paragraph{Pilot status.}
+The pilot is prepared as two config-stable shards and has not run. A 45-unit dry run (five tasks, all
+conditions) completed on one A100 with 886{,}758 tokens and 408\,s; all units completed but
+only 1 passed, so it is a plumbing check, not a condition result. No condition-level results
+exist.
 
 \section{Future Work}
 
-We will scale to the full 300 tasks and a second seed, since the pilot's intervals do not yet
-separate H1 from H0. We will run H5 and test whether evolution transfers to held-out task
-families or overfits the 200 development wishes. And we will finish the discard condition and
-the answer-conditioned delta, which show whether H3's advantage comes from the answers or from
-the act of asking.
-
-Two things changed after proposal feedback. Levels are now built by mechanical field deletion
-rather than LLM rewriting, removing the cost risk the proposal carried. And the harness question
-raised in feedback is now an experiment rather than a claim: the pilot already suggests context
-does not substitute for elicitation, and the full run will settle it.
+We will run the prepared pilot, then scale to the 300 held-out tasks and more seeds. First,
+replace the first-sentence L3 with a task-sentence extractor and make visible tests disjoint from
+examples; MBPP+ duplicates its test list in both fields. We will run H5, finish DISCARD, compare
+the encoder with TF-IDF, and add a source with explicit error-behaviour annotations. The
+proposal-feedback changes are in place: mechanical field deletion replaced LLM rewriting, and
+the harness question is the H4 experiment; the pilot will settle it.
 
 \bibliographystyle{unsrt}
 \bibliography{references}

@@ -327,3 +327,22 @@ def test_default_detector_is_the_final_smoothed_detector():
 def test_missing_detector_message_names_the_reproducing_target(tmp_path):
     with pytest.raises(FileNotFoundError, match="make detector-smoothed"):
         load_detector(tmp_path / "model.json")
+
+
+def test_report_limitations_are_derived_from_the_metrics():
+    """Prose numbers must match the table, not a stale hard-coded run."""
+    from pathlib import Path
+
+    from wishrec.detector.train import render_report
+
+    metrics = json.loads(Path("results/detector-smoothed/metrics.json").read_text(encoding="utf-8"))
+    report = render_report(metrics)
+    error = metrics["detection"]["encoder"]["per_label"]["error_behaviour"]
+    prevalence = metrics["data"]["label_prevalence"]["error_behaviour"]
+    kept = sum(metrics["data"]["split_counts"].values())
+
+    assert "12.6%" not in report
+    assert f"F1 at the default 0.5 threshold is {error['f1']:.3f}" in report
+    assert f"{prevalence:.1%} base rate" in report
+    assert f"across all {kept:,} kept tasks" in report
+    assert f"in the {metrics['data']['tasks']} train tasks" in report

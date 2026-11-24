@@ -346,6 +346,8 @@ def _sha256_file(path: Path) -> str:
 
 def render_report(metrics: dict, *, run_label: str | None = None) -> str:
     """Human-readable detector report with every headline number traceable to JSON."""
+    error_f1 = metrics["detection"]["encoder"]["per_label"]["error_behaviour"]["f1"]
+    error_prevalence = metrics["data"]["label_prevalence"]["error_behaviour"]
     detection = metrics["detection"]
     header = run_label or str(metrics.get("run_id", "r1")).upper()
     lines = [
@@ -372,9 +374,11 @@ def render_report(metrics: dict, *, run_label: str | None = None) -> str:
         "Label: 1 when the category has content in the full L0 specification, i.e. the wish",
         (
             "omits information the stakeholder can supply. `error_behaviour` has "
-            f"{metrics['data']['label_counts']['error_behaviour']} positives in the 500 train "
-            f"tasks ({metrics['data']['label_counts_all_kept']['error_behaviour']} across all "
-            "1,100 kept tasks); its metrics are reported, not declared undefined."
+            f"{metrics['data']['label_counts']['error_behaviour']} positives in the "
+            f"{metrics['data']['tasks']} train tasks "
+            f"({metrics['data']['label_counts_all_kept']['error_behaviour']} across all "
+            f"{sum(metrics['data']['split_counts'].values()):,} kept tasks); its metrics are "
+            "reported, not declared undefined."
         ),
         "",
         "## Out-of-fold detection (5 folds, inner-fold L2/Platt calibration)",
@@ -450,8 +454,14 @@ def render_report(metrics: dict, *, run_label: str | None = None) -> str:
             "- The encoder is frozen and the head is a single linear layer; there is no",
             "  fine-tuning. The reported OOF numbers are the detector evidence, not a pilot",
             "  result.",
-            "- The `error_behaviour` F1 at the default 0.5 threshold is 0 because its",
-            "  calibrated probability stays near the 12.6% base rate; AUROC and average",
+            (
+                "- The `error_behaviour` F1 at the default 0.5 threshold is "
+                f"{error_f1:.3f} because its"
+            ),
+            (
+                f"  calibrated probability stays near the {error_prevalence:.1%} base rate; "
+                "AUROC and average"
+            ),
             "  precision are the informative ranking metrics for that label.",
             "- Platt calibration is fitted on nested out-of-fold predictions of the train split;",
             "  the 300 held-out and 100 pilot tasks are untouched.",

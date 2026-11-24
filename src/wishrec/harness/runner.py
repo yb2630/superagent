@@ -228,6 +228,8 @@ def summarise(run_dir: Path, config: dict, *, planned_units: int | None = None) 
                     continue
                 if allowed_samples and unit.get("sample_index", 0) not in allowed_samples:
                     continue
+                if unit.get("api_error"):
+                    continue  # scored on the stub; the unit is missing, not a failure
                 units.append(unit)
         total_units += len(units)
         passes = sum(1 for unit in units if unit.get("pass"))
@@ -385,7 +387,7 @@ def execute_unit(
 
 
 def _stored_unit_records(output_dir: Path, config: dict, digest: str) -> list[dict]:
-    """Completed units on disk that belong to this exact configuration.
+    """Completed, error-free units on disk that belong to this exact configuration.
 
     Rebuilt from disk after every invocation so ``results.jsonl`` covers the whole run
     (all shards), not just the units executed in this session.
@@ -404,6 +406,8 @@ def _stored_unit_records(output_dir: Path, config: dict, digest: str) -> list[di
                 continue
             if unit.get("status") != "complete" or unit.get("config_hash") != digest:
                 continue
+            if unit.get("api_error"):
+                continue  # re-run on resume; never a result
             if allowed_tasks and unit.get("task_key") not in allowed_tasks:
                 continue
             if allowed_samples and unit.get("sample_index", 0) not in allowed_samples:

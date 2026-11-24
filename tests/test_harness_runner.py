@@ -203,3 +203,36 @@ def test_detector_identity_is_semantic_not_a_file_timestamp(tmp_path):
     changed = tmp_path / "changed.json"
     changed.write_text(json.dumps(model), encoding="utf-8")
     assert runner.detector_identity(changed)["sha256"] != identity["sha256"]
+
+
+def test_summarise_and_results_exclude_api_error_units(tmp_path):
+    run_dir = tmp_path / "run"
+    units = run_dir / "units" / "H0" / "0"
+    units.mkdir(parents=True)
+    base = {
+        "condition": "H0",
+        "sample_index": 0,
+        "status": "complete",
+        "config_hash": "digest",
+        "bucket": "AssertionError",
+        "turns": 1,
+        "questions": 0,
+        "totals": {"input_tokens": 1, "output_tokens": 1},
+    }
+    (units / "a.json").write_text(
+        json.dumps({**base, "task_key": "a", "pass": True, "bucket": "None"}), encoding="utf-8"
+    )
+    (units / "b.json").write_text(
+        json.dumps({**base, "task_key": "b", "pass": False, "api_error": "APIError: down"}),
+        encoding="utf-8",
+    )
+    config = {"run_id": "x", "conditions": ["H0"], "task_keys": ["a", "b"], "sample_indices": [0]}
+
+    summary, report = runner.summarise(run_dir, config)
+    assert "| H0 | 1/1 |" in report
+    assert summary["units"] == 1
+    assert summary["missing_units"] == 1
+    assert summary["complete"] is False
+    assert [
+        unit["task_key"] for unit in runner._stored_unit_records(run_dir, config, "digest")
+    ] == ["a"]

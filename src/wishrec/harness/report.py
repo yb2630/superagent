@@ -49,10 +49,18 @@ def _unit_key(unit: dict) -> tuple[str, str, int]:
     )
 
 
-def load_runs(run_dirs: list[Path]) -> tuple[dict[tuple[str, str, int], dict], list[dict]]:
-    """Collect completed units (first occurrence wins) and each run's config."""
+def load_runs(
+    run_dirs: list[Path],
+) -> tuple[dict[tuple[str, str, int], dict], list[dict], set[tuple[str, str, int]]]:
+    """Collect completed units (first occurrence wins), each run's config and error keys.
+
+    A unit whose endpoint call failed (non-empty ``api_error``) was scored on whatever the
+    workspace held, so it is not a result: it is left out of the units and its key is
+    returned in the third element unless another run directory holds a clean copy.
+    """
     units: dict[tuple[str, str, int], dict] = {}
     configs: list[dict] = []
+    api_error_keys: set[tuple[str, str, int]] = set()
     for run_dir in run_dirs:
         manifest_path = Path(run_dir) / "manifest.json"
         if not manifest_path.is_file():
@@ -67,8 +75,11 @@ def load_runs(run_dirs: list[Path]) -> tuple[dict[tuple[str, str, int], dict], l
                 continue
             if unit.get("status") != "complete":
                 continue
+            if unit.get("api_error"):
+                api_error_keys.add(_unit_key(unit))
+                continue
             units.setdefault(_unit_key(unit), unit)
-    return units, configs
+    return units, configs, api_error_keys - units.keys()
 
 
 def _union_config(configs: list[dict]) -> dict:
@@ -150,7 +161,7 @@ def build_report(run_dirs: list[Path], *, tasks_path: Path | None = None) -> dic
 
     Held-out or unknown task units are counted and reported rather than silently dropped.
     """
-    units, configs = load_runs([Path(path) for path in run_dirs])
+    units, configs, api_error_keys = load_runs([Path(path) for path in run_dirs])
     config = _union_config(configs)
     task_keys = set(config["task_keys"])
     tasks = load_tasks(tasks_path)
@@ -288,6 +299,9 @@ def build_report(run_dirs: list[Path], *, tasks_path: Path | None = None) -> dic
             "The 300 held-out tasks must not appear in any pilot unit.",
         ],
     }
+    if api_error_keys:
+        # Only present when non-zero, so clean runs keep their established summary shape.
+        summary["api_error_units"] = len(api_error_keys)
     summary["report"] = render_report(summary)
     return summary
 
@@ -371,6 +385,12 @@ def render_report(summary: dict) -> str:
         lines.append("")
         for condition, item in summary["missing_units"].items():
             lines.append(f"- {condition}: {item['completed']}/{item['expected']} completed")
+        lines.append("")
+    if summary.get("api_error_units"):
+        lines.append(
+            f"- {summary['api_error_units']} unit(s) ended in an API error and are counted "
+            "as missing, not as failures; resume the run to re-execute them."
+        )
         lines.append("")
     lines.extend(
         [

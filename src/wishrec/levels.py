@@ -61,9 +61,7 @@ def _block(fields: dict[str, str], category: str, *, signature_is_code: bool) ->
     raise KeyError(category)
 
 
-def render_level(
-    fields: dict[str, str], level: str, *, signature_is_code: bool
-) -> str:
+def render_level(fields: dict[str, str], level: str, *, signature_is_code: bool) -> str:
     """Render one level.
 
     L0 keeps every present field.  L1 drops examples and type detail (the signature is
@@ -100,9 +98,7 @@ def render_level(
     return "\n\n".join(blocks).strip()
 
 
-def render_l0_minus(
-    fields: dict[str, str], category: str, *, signature_is_code: bool
-) -> str:
+def render_l0_minus(fields: dict[str, str], category: str, *, signature_is_code: bool) -> str:
     """L0 with exactly one field block removed (the paper's single-field drop)."""
     if category not in FIELD_KEYS:
         raise ValueError(category)
@@ -119,17 +115,14 @@ def render_l0_minus(
 def build_levels(fields: dict[str, str], *, signature_is_code: bool) -> dict:
     """Return level texts, deletion metadata and the L2_c single-field drops."""
     levels = {
-        level: render_level(fields, level, signature_is_code=signature_is_code)
-        for level in LEVELS
+        level: render_level(fields, level, signature_is_code=signature_is_code) for level in LEVELS
     }
     presence = {name: bool(fields.get(name, "").strip()) for name in FIELD_KEYS}
     l2_c = {
         category: {
             "definition": "L0 with exactly this field removed (single-label deletion)",
             "field_present": presence[category],
-            "text": render_l0_minus(
-                fields, category, signature_is_code=signature_is_code
-            ),
+            "text": render_l0_minus(fields, category, signature_is_code=signature_is_code),
         }
         for category in FIELD_KEYS
     }
@@ -163,9 +156,7 @@ def level_labels(fields: dict[str, str], level: str) -> dict[str, int]:
         }[level]
     else:
         raise ValueError(level)
-    return {
-        name: int(presence[name] and name in deleted) for name in FIELD_KEYS
-    }
+    return {name: int(presence[name] and name in deleted) for name in FIELD_KEYS}
 
 
 def l2_c_labels(fields: dict[str, str], category: str) -> dict[str, int]:

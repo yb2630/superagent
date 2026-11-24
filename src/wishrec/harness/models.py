@@ -66,9 +66,7 @@ class Task:
 
     @classmethod
     def from_record(cls, record: dict, *, derived_root: Path | None = None) -> "Task":
-        directory = derived_task_dir(
-            record["source"], record["source_task_id"], root=derived_root
-        )
+        directory = derived_task_dir(record["source"], record["source_task_id"], root=derived_root)
         visible_path = directory / "visible_test.py"
         hidden_path = directory / "hidden_test.py"
         canonical_path = directory / "canonical_solution.py"
@@ -110,9 +108,7 @@ class Task:
             split=record["split"],
             stub=record["stub"],
             fields=dict(record["fields"]),
-            field_presence={
-                field: bool(record["field_presence"][field]) for field in FIELD_KEYS
-            },
+            field_presence={field: bool(record["field_presence"][field]) for field in FIELD_KEYS},
             levels=dict(record["levels"]),
             visible_asserts=record["visible_asserts"],
             visible_asserts_count=int(record["visible_asserts_count"]),
@@ -184,9 +180,7 @@ def _task_without_derived(record: dict) -> Task:
         split=record["split"],
         stub=record["stub"],
         fields=dict(record["fields"]),
-        field_presence={
-            field: bool(record["field_presence"][field]) for field in FIELD_KEYS
-        },
+        field_presence={field: bool(record["field_presence"][field]) for field in FIELD_KEYS},
         levels=dict(record["levels"]),
         visible_asserts=record["visible_asserts"],
         visible_asserts_count=int(record["visible_asserts_count"]),

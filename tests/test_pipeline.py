@@ -96,15 +96,11 @@ def test_notebook_pipeline_smooths_then_runs_all_conditions_through_a_fake_endpo
         assert condition["passes"] == 5
 
     h0 = json.loads(
-        (tmp_path / "run" / "units" / "H0" / "0" / "script__add-0.json").read_text(
-            encoding="utf-8"
-        )
+        (tmp_path / "run" / "units" / "H0" / "0" / "script__add-0.json").read_text(encoding="utf-8")
     )
     assert "A smoothed wish for the pilot." in json.dumps(h0["messages"])
     b1 = json.loads(
-        (tmp_path / "run" / "units" / "B1" / "0" / "script__add-0.json").read_text(
-            encoding="utf-8"
-        )
+        (tmp_path / "run" / "units" / "B1" / "0" / "script__add-0.json").read_text(encoding="utf-8")
     )
     assert "A smoothed wish for the pilot." not in json.dumps(b1["messages"])
     assert "Intent:" in json.dumps(b1["messages"])
@@ -157,9 +153,7 @@ def test_shards_are_config_stable_and_resume_per_unit(tmp_path, monkeypatch):
         assert len(endpoint.requests) == requests_after_second
         assert len((tmp_path / "run" / "results.jsonl").read_text().splitlines()) == 45
 
-    manifest = json.loads(
-        (tmp_path / "run" / "manifest.json").read_text(encoding="utf-8")
-    )
+    manifest = json.loads((tmp_path / "run" / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["status"] == "complete"
     assert manifest["units_planned"] == 45
     assert manifest["units_completed"] == 45

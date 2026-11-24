@@ -31,3 +31,9 @@ results/cache/
 
 # Local vLLM endpoint settings (may contain a key)
 configs/vllm.env
+
+# Test coverage
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/

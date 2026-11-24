@@ -104,10 +104,7 @@ def _synthetic_record(index: int) -> dict:
         "source_task_id": str(index),
         "entry_point": "f",
         "split": "train",
-        "fields": {
-            label: f"{label} {index}" if presence[label] else ""
-            for label in presence
-        },
+        "fields": {label: f"{label} {index}" if presence[label] else "" for label in presence},
         "field_presence": presence,
         "levels": {"L0": "full", "L1": "l1", "L2": "l2", "L3": f"Wish {index}."},
         "stub": "def f():\n    pass\n",

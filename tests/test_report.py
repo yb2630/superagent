@@ -45,9 +45,7 @@ def _tasks_file(tmp_path):
         },
     ]
     path = tmp_path / "tasks.jsonl"
-    path.write_text(
-        "\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8"
-    )
+    path.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
     return path
 
 
@@ -172,9 +170,7 @@ def test_report_aggregates_condition_chunks_and_reports_missing_units(tmp_path):
     assert summary["expected_units"] == 8
     assert summary["completed_units"] == 7
     assert summary["complete"] is False
-    assert summary["missing_units"] == {
-        "H0": {"expected": 4, "completed": 3}
-    }
+    assert summary["missing_units"] == {"H0": {"expected": 4, "completed": 3}}
     assert "INCOMPLETE" in summary["report"]
 
 
@@ -216,9 +212,7 @@ def test_report_flags_a_heldout_unit_outside_the_config_window(tmp_path):
         passes={("B1", "pilot/a", 0): True, ("B1", "pilot/b", 0): True},
     )
     stray = run / "units" / "B1" / "0" / "heldout__secret.json"
-    stray.write_text(
-        json.dumps(_unit("B1", "heldout/secret", 0, True)), encoding="utf-8"
-    )
+    stray.write_text(json.dumps(_unit("B1", "heldout/secret", 0, True)), encoding="utf-8")
     summary = build_report([run], tasks_path=tasks)
     assert summary["heldout_tasks_used"] == 1
     assert summary["heldout_examples"] == ["heldout/secret"]

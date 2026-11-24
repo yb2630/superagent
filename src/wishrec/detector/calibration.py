@@ -90,8 +90,7 @@ def fit_calibrators(
     label_names: tuple[str, ...] = LABELS,
 ) -> list[dict]:
     return [
-        fit_platt(probabilities[:, index], labels[:, index])
-        for index in range(len(label_names))
+        fit_platt(probabilities[:, index], labels[:, index]) for index in range(len(label_names))
     ]
 
 
@@ -180,8 +179,7 @@ def calibrate_threshold(
     candidates.update(float(value) for value in unique)
     if len(unique) > 1:
         candidates.update(
-            float((unique[index] + unique[index + 1]) / 2.0)
-            for index in range(len(unique) - 1)
+            float((unique[index] + unique[index + 1]) / 2.0) for index in range(len(unique) - 1)
         )
     rows = [
         {

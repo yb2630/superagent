@@ -153,9 +153,7 @@ def _classify(text: str) -> tuple[str, str]:
     return "non-zero exit", ""
 
 
-def _run(
-    args: list[str], cwd: Path, timeout: float
-) -> tuple[bool, str, str, float]:
+def _run(args: list[str], cwd: Path, timeout: float) -> tuple[bool, str, str, float]:
     env = dict(os.environ)
     env.update(
         {
@@ -254,9 +252,7 @@ def validate_task(
         )
         if not visible_ok:
             exception, missing = (
-                ("Timeout", "")
-                if visible_timeout_flag
-                else _classify(visible_output)
+                ("Timeout", "") if visible_timeout_flag else _classify(visible_output)
             )
             result = ValidationResult(
                 ok=False,
@@ -273,9 +269,7 @@ def validate_task(
         )
         if not hidden_ok:
             exception, missing = (
-                ("Timeout", "")
-                if hidden_timeout_flag
-                else _classify(hidden_output)
+                ("Timeout", "") if hidden_timeout_flag else _classify(hidden_output)
             )
             result = ValidationResult(
                 ok=False,
@@ -318,9 +312,7 @@ def validate_all(
     started = time.monotonic()
     with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
         futures = {
-            executor.submit(
-                validate_task, task, use_cache=use_cache, force=force
-            ): task
+            executor.submit(validate_task, task, use_cache=use_cache, force=force): task
             for task in ordered
         }
         for index, future in enumerate(as_completed(futures), 1):
@@ -348,15 +340,9 @@ def validate_all(
         "passed": sum(1 for result in results.values() if result.ok),
         "failed": sum(1 for result in results.values() if not result.ok),
         "cached": sum(1 for result in results.values() if result.cached),
-        "visible_failures": sum(
-            1 for result in results.values() if result.stage == "visible"
-        ),
-        "hidden_failures": sum(
-            1 for result in results.values() if result.stage == "hidden"
-        ),
-        "timeouts": sum(
-            1 for result in results.values() if result.exception == "Timeout"
-        ),
+        "visible_failures": sum(1 for result in results.values() if result.stage == "visible"),
+        "hidden_failures": sum(1 for result in results.values() if result.stage == "hidden"),
+        "timeouts": sum(1 for result in results.values() if result.exception == "Timeout"),
         "workers": workers,
         "seconds": round(time.monotonic() - started, 1),
     }

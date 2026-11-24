@@ -19,9 +19,7 @@ from .constants import LABELS
 TASKS_PATH = LEVELS_DIR / "tasks.jsonl"
 
 
-def load_records(
-    *, split: str = "train", tasks_path: Path | None = None
-) -> list[dict]:
+def load_records(*, split: str = "train", tasks_path: Path | None = None) -> list[dict]:
     records = read_jsonl(tasks_path or TASKS_PATH)
     selected = [record for record in records if record["split"] == split]
     selected.sort(key=lambda record: record["key"])
@@ -30,10 +28,7 @@ def load_records(
 
 def label_matrix(records: list[dict]) -> np.ndarray:
     return np.asarray(
-        [
-            [float(bool(record["field_presence"][label])) for label in LABELS]
-            for record in records
-        ],
+        [[float(bool(record["field_presence"][label])) for label in LABELS] for record in records],
         dtype=np.float64,
     )
 
@@ -44,9 +39,7 @@ def wishes(records: list[dict]) -> list[str]:
 
 def label_counts(Y: np.ndarray) -> dict[str, int]:
     matrix = np.asarray(Y)
-    return {
-        label: int(matrix[:, index].sum()) for index, label in enumerate(LABELS)
-    }
+    return {label: int(matrix[:, index].sum()) for index, label in enumerate(LABELS)}
 
 
 def train_dataset(
@@ -90,8 +83,7 @@ def train_dataset(
         "sources": [record["source"] for record in records],
         "label_counts": label_counts(Y),
         "label_prevalence": {
-            label: round(float(Y[:, index].mean()), 6)
-            for index, label in enumerate(LABELS)
+            label: round(float(Y[:, index].mean()), 6) for index, label in enumerate(LABELS)
         },
         "split": "train",
         "tasks_path": str(tasks_path or TASKS_PATH),

@@ -94,9 +94,7 @@ def load_task_means(
     if not groups:
         raise ValueError(f"{results_path}: no result rows")
     task_means = {
-        condition: {
-            task: float(sum(values) / len(values)) for task, values in per_task.items()
-        }
+        condition: {task: float(sum(values) / len(values)) for task, values in per_task.items()}
         for condition, per_task in groups.items()
     }
     sample_counts = {
@@ -201,9 +199,7 @@ def load_summary_grouping(
         conditions: dict[str, dict] = {}
         for condition, values in raw["conditions"].items():
             if not isinstance(values, dict):
-                raise ValueError(
-                    f"{summary_path}: malformed by_category {name}/{condition}"
-                )
+                raise ValueError(f"{summary_path}: malformed by_category {name}/{condition}")
             conditions[condition] = {
                 "pass_at_1": values.get("pass_at_1"),
                 "pass_rate": values.get("pass_rate"),
@@ -255,9 +251,7 @@ def build_bootstrap(
     }
     contrast_items = []
     for a, b in contrasts:
-        differences = np.array(
-            [task_means[a][task] - task_means[b][task] for task in tasks]
-        )
+        differences = np.array([task_means[a][task] - task_means[b][task] for task in tasks])
         low, high = paired_interval(differences, indices, alpha=alpha)
         difference = float(differences.mean())
         contrast_items.append(
@@ -322,8 +316,7 @@ def render_markdown(summary: dict) -> str:
         "# R2b paired task-level bootstrap",
         "",
         f"- Generated: {summary['generated_at']}",
-        f"- Source: `{summary['results']}` "
-        f"(sha256 `{summary['results_sha256']}`)",
+        f"- Source: `{summary['results']}` (sha256 `{summary['results_sha256']}`)",
         f"- {summary['tasks']} tasks; samples per task "
         f"{summary['samples_per_task']}; {summary['bootstrap']['resamples']} resamples; "
         f"seed {summary['bootstrap']['seed']}",
@@ -342,8 +335,7 @@ def render_markdown(summary: dict) -> str:
     )
     for condition, item in summary["conditions"].items():
         lines.append(
-            f"| {condition} | {item['pass_at_1'] * 100:.1f} | {item['tasks']} | "
-            f"{item['units']} |"
+            f"| {condition} | {item['pass_at_1'] * 100:.1f} | {item['tasks']} | {item['units']} |"
         )
     lines.extend(
         [
@@ -369,9 +361,7 @@ def render_markdown(summary: dict) -> str:
                 "From `summary.json`: tasks grouped by an L0 category their wish omits "
                 "(categories overlap).",
                 "",
-                "| category | tasks | "
-                + " | ".join(CATEGORY_CONDITIONS)
-                + " | H3 recovery |",
+                "| category | tasks | " + " | ".join(CATEGORY_CONDITIONS) + " | H3 recovery |",
                 "| --- | --- | " + " | ".join("---" for _ in CATEGORY_CONDITIONS) + " | --- |",
             ]
         )

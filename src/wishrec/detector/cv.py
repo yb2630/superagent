@@ -36,9 +36,7 @@ def _inner_select_and_calibrate(
     seed: int,
 ):
     train_idx = np.asarray(train_idx)
-    inner = KFold(
-        n_splits=INNER_CALIBRATION_FOLDS, shuffle=True, random_state=seed + 1
-    )
+    inner = KFold(n_splits=INNER_CALIBRATION_FOLDS, shuffle=True, random_state=seed + 1)
     inner_probabilities = {
         candidate: np.zeros((len(train_idx), n_labels)) for candidate in candidates
     }
@@ -62,12 +60,8 @@ def _inner_select_and_calibrate(
     info["inner_selection"] = {
         "selected": selected,
         "candidates": list(candidates),
-        "inner_brier_raw": {
-            str(candidate): round(score, 6) for candidate, score in scores.items()
-        },
-        "inner_brier_calibrated": round(
-            _mean_brier(calibrated_inner, Y[train_idx]), 6
-        ),
+        "inner_brier_raw": {str(candidate): round(score, 6) for candidate, score in scores.items()},
+        "inner_brier_calibrated": round(_mean_brier(calibrated_inner, Y[train_idx]), 6),
         "calibrators": calibrators,
     }
     return calibrated, info, predict, {"selected": selected, "scores": scores}
@@ -95,19 +89,14 @@ def cross_validate(
         method: np.zeros((n, n_labels), dtype=np.float64)
         for method in ("prior", "tfidf", "encoder")
     }
-    raw_oof = {
-        method: np.zeros((n, n_labels), dtype=np.float64)
-        for method in ("tfidf", "encoder")
-    }
+    raw_oof = {method: np.zeros((n, n_labels), dtype=np.float64) for method in ("tfidf", "encoder")}
     fold_records = []
     for fold_index, (train_idx, test_idx) in enumerate(outer.split(np.arange(n))):
         prior_predict, prior_info = fit_prior(Y, train_idx)
         oof["prior"][test_idx] = prior_predict(test_idx)
 
         tfidf_predict, tfidf_info, tfidf_raw, tfidf_selection = _inner_select_and_calibrate(
-            lambda candidate: lambda idx: fit_tfidf_logistic(
-                texts, Y, idx, C=candidate, seed=seed
-            ),
+            lambda candidate: lambda idx: fit_tfidf_logistic(texts, Y, idx, C=candidate, seed=seed),
             tfidf_c_candidates,
             Y,
             train_idx,
@@ -117,17 +106,15 @@ def cross_validate(
         oof["tfidf"][test_idx] = tfidf_predict(test_idx)
         raw_oof["tfidf"][test_idx] = tfidf_raw(test_idx)
 
-        encoder_predict, encoder_info, encoder_raw, encoder_selection = (
-            _inner_select_and_calibrate(
-                lambda candidate: lambda idx: fit_encoder_head(
-                    embeddings, Y, idx, seed=seed, l2=candidate
-                ),
-                encoder_l2_candidates,
-                Y,
-                train_idx,
-                n_labels=n_labels,
-                seed=seed + fold_index,
-            )
+        encoder_predict, encoder_info, encoder_raw, encoder_selection = _inner_select_and_calibrate(
+            lambda candidate: (
+                lambda idx: fit_encoder_head(embeddings, Y, idx, seed=seed, l2=candidate)
+            ),
+            encoder_l2_candidates,
+            Y,
+            train_idx,
+            n_labels=n_labels,
+            seed=seed + fold_index,
         )
         oof["encoder"][test_idx] = encoder_predict(test_idx)
         raw_oof["encoder"][test_idx] = encoder_raw(test_idx)
@@ -185,16 +172,12 @@ def select_deployed_l2(
     X = np.asarray(embeddings, dtype=np.float64)
     Y = np.asarray(Y, dtype=np.float64)
     kfold = KFold(n_splits=folds, shuffle=True, random_state=seed + 100)
-    probabilities = {
-        candidate: np.zeros_like(Y, dtype=np.float64) for candidate in candidates
-    }
+    probabilities = {candidate: np.zeros_like(Y, dtype=np.float64) for candidate in candidates}
     for train_idx, test_idx in kfold.split(np.arange(len(X))):
         for candidate in candidates:
             predict, _ = fit_encoder_head(X, Y, train_idx, seed=seed, l2=candidate)
             probabilities[candidate][test_idx] = predict(test_idx)
-    scores = {
-        candidate: _mean_brier(probabilities[candidate], Y) for candidate in candidates
-    }
+    scores = {candidate: _mean_brier(probabilities[candidate], Y) for candidate in candidates}
     selected = min(candidates, key=lambda candidate: scores[candidate])
     return {
         "selected": selected,

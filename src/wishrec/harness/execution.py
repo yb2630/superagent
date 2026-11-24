@@ -16,9 +16,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-EXCEPTION_RE = re.compile(
-    r"^([A-Za-z_][\w.]*(?:Error|Exception|Warning|Exit|Interrupt|Failure))\b"
-)
+EXCEPTION_RE = re.compile(r"^([A-Za-z_][\w.]*(?:Error|Exception|Warning|Exit|Interrupt|Failure))\b")
 
 VISIBLE_TIMEOUT = 30.0
 HIDDEN_TIMEOUT = 120.0
@@ -38,9 +36,7 @@ class RunResult:
         return self.returncode == 0 and not self.timed_out
 
     def combined(self) -> str:
-        return (
-            self.stdout + ("\n" if self.stdout and self.stderr else "") + self.stderr
-        ).strip()
+        return (self.stdout + ("\n" if self.stdout and self.stderr else "") + self.stderr).strip()
 
 
 def scrubbed_env(workspace: Path) -> dict[str, str]:
@@ -99,18 +95,14 @@ def run_python_module(
     return _run([sys.executable, "-m", module, *args], cwd, timeout)
 
 
-def run_visible_suite(
-    source: str, workspace: Path, timeout: float = VISIBLE_TIMEOUT
-) -> RunResult:
+def run_visible_suite(source: str, workspace: Path, timeout: float = VISIBLE_TIMEOUT) -> RunResult:
     """Run the derived three-method visible test file for the task's source."""
     if source == "bigcodebench":
         return run_python_module("unittest", workspace, timeout, "visible_test")
     return run_python_file(workspace / "visible_test.py", workspace, timeout)
 
 
-def run_hidden_suite(
-    source: str, workspace: Path, timeout: float = HIDDEN_TIMEOUT
-) -> RunResult:
+def run_hidden_suite(source: str, workspace: Path, timeout: float = HIDDEN_TIMEOUT) -> RunResult:
     """Run the full hidden suite against the current ``solution.py``."""
     if source == "bigcodebench":
         return run_python_module("unittest", workspace, timeout, "hidden_test")

@@ -3,7 +3,7 @@ PYTHON ?= .venv/bin/python
 RUN_ID ?= r1-smoke
 VISIBLE_TESTS ?= inputs_only
 
-.PHONY: levels test detector detector-smoothed smoke
+.PHONY: levels test detector detector-smoothed smoke lint format typecheck coverage check
 
 # Rebuild results/levels/ from the pinned datasets.  Downloads are cached in data/raw/,
 # canonical-solution checks are cached in data/cache/validation/, and hidden tests plus
@@ -18,6 +18,27 @@ levels:
 # Fast checks: no network, no downloaded datasets, no BigCodeBench validation libraries.
 test:
 	$(UV) run pytest
+
+# Tests with a line/branch coverage report (terminal + coverage.xml for CI).
+coverage:
+	$(UV) run pytest --cov --cov-report=term --cov-report=xml
+
+# Lint and check formatting without changing files (what CI runs).
+lint:
+	$(UV) run ruff check .
+	$(UV) run ruff format --check .
+
+# Apply safe lint fixes and reformat in place.
+format:
+	$(UV) run ruff check --fix .
+	$(UV) run ruff format .
+
+# Static type checking of src/ and scripts/ (configured in pyproject.toml).
+typecheck:
+	$(UV) run mypy
+
+# Everything CI checks, in the order CI runs it.
+check: lint typecheck test
 
 # Fit the frozen Qwen3-Embedding detector on the 500 train tasks, calibrate it and write
 # results/detector/.  CPU only; the encoder is cached locally and never trained.

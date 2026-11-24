@@ -73,8 +73,7 @@ class Source:
     @property
     def url(self) -> str:
         return (
-            f"https://huggingface.co/datasets/{self.repo}"
-            f"/resolve/{self.revision}/{self.filename}"
+            f"https://huggingface.co/datasets/{self.repo}/resolve/{self.revision}/{self.filename}"
         )
 
 

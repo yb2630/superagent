@@ -65,12 +65,8 @@ QUESTION_COUNT_RANGE = (2, 3)
 
 QUESTION_TEMPLATES = {
     "intent": "What is the core behaviour the function should implement?",
-    "signature_types": (
-        "What are the exact function signature, parameter types, and return type?"
-    ),
-    "examples": (
-        "Can you give a concrete example: an input and the exact expected output?"
-    ),
+    "signature_types": ("What are the exact function signature, parameter types, and return type?"),
+    "examples": ("Can you give a concrete example: an input and the exact expected output?"),
     "constraints": (
         "What constraints and edge cases should the implementation handle (for example "
         "empty inputs, duplicates, ordering, or bounds)?"

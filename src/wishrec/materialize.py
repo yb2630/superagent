@@ -129,8 +129,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tasks", type=Path, default=LEVELS_DIR / "tasks.jsonl")
     parser.add_argument("--derived", type=Path, default=None, help="override data/derived/levels")
-    parser.add_argument("--download", action="store_true", help="download/verify pinned raw data first")
-    parser.add_argument("--clean", action="store_true", help="remove the derived root before writing")
+    parser.add_argument(
+        "--download", action="store_true", help="download/verify pinned raw data first"
+    )
+    parser.add_argument(
+        "--clean", action="store_true", help="remove the derived root before writing"
+    )
     parser.add_argument("--check-only", action="store_true", help="report coverage only")
     parser.add_argument(
         "--visible-tests",

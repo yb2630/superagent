@@ -142,9 +142,7 @@ class ToolSession:
             args = json.loads(arguments) if isinstance(arguments, str) else dict(arguments)
         except Exception as exc:  # noqa: BLE001 - malformed model output is data
             result = f"Error: tool arguments must be a JSON object ({exc})."
-            self.calls.append(
-                {"name": name, "arguments": arguments, "result": result, "ok": False}
-            )
+            self.calls.append({"name": name, "arguments": arguments, "result": result, "ok": False})
             return result
         if not isinstance(args, dict):
             result = "Error: tool arguments must be a JSON object."
@@ -165,9 +163,7 @@ class ToolSession:
             result = f"Error: {type(exc).__name__}: {exc}"
         ok = not result.startswith("Error:")
         result = _truncate(result)
-        self.calls.append(
-            {"name": name, "arguments": args, "result": result, "ok": ok}
-        )
+        self.calls.append({"name": name, "arguments": args, "result": result, "ok": ok})
         return result
 
     # -- individual tools ---------------------------------------------------------
@@ -204,15 +200,11 @@ class ToolSession:
             self.last_error = ""
             printed = result.stdout.strip()
             if printed:
-                return (
-                    "Visible tests passed. Printed output:\n"
-                    f"{_truncate(printed, 2000)}"
-                )
+                return f"Visible tests passed. Printed output:\n{_truncate(printed, 2000)}"
             return "Visible tests passed."
         self.last_error = result.combined()
         return (
-            f"Visible tests failed ({record['exception']}). "
-            "Call read_error to see the traceback."
+            f"Visible tests failed ({record['exception']}). Call read_error to see the traceback."
         )
 
     def _read_error(self) -> str:
@@ -230,9 +222,7 @@ class ToolSession:
             return f"Error: the question budget ({self.ask_budget}) is exhausted."
         self.ask_used += 1
         answer = self.ask_fn(question)
-        self.questions.append(
-            {"index": self.ask_used, "question": question, "answer": answer}
-        )
+        self.questions.append({"index": self.ask_used, "question": question, "answer": answer})
         return answer
 
     # -- trace --------------------------------------------------------------------

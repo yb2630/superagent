@@ -82,14 +82,12 @@ def test_assign_splits_is_exact_stratified_and_disjoint():
     keys = [task.key for items in assigned.values() for task in items]
     assert len(keys) == len(set(keys)) == 1100
     for source in ("humanevalplus", "mbppplus", "bigcodebench"):
-        total = sum(
-            1 for items in assigned.values() for task in items if task.source == source
-        )
-        assert total == info["split_by_source"]["train"].get(source, 0) + info[
+        total = sum(1 for items in assigned.values() for task in items if task.source == source)
+        assert total == info["split_by_source"]["train"].get(source, 0) + info["split_by_source"][
+            "evolution"
+        ].get(source, 0) + info["split_by_source"]["heldout"].get(source, 0) + info[
             "split_by_source"
-        ]["evolution"].get(source, 0) + info["split_by_source"]["heldout"].get(
-            source, 0
-        ) + info["split_by_source"]["pilot"].get(source, 0)
+        ]["pilot"].get(source, 0)
     assert info["split_by_source"]["train"] == {
         "humanevalplus": 50,
         "mbppplus": 150,
@@ -97,9 +95,7 @@ def test_assign_splits_is_exact_stratified_and_disjoint():
     }
     again, _ = assign_splits(tasks, seed=20261121)
     for split in assigned:
-        assert {task.key for task in assigned[split]} == {
-            task.key for task in again[split]
-        }
+        assert {task.key for task in assigned[split]} == {task.key for task in again[split]}
 
 
 def test_assign_splits_pilot_is_disjoint_from_heldout():

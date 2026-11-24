@@ -87,9 +87,7 @@ def test_parse_text_tool_calls_accepts_fenced_json_and_flattened_arguments():
     assert calls[0].name == "write_file"
     assert json.loads(calls[0].arguments)["path"] == "solution.py"
 
-    flattened, _ = parse_text_tool_calls(
-        '{"tool": "run_visible_tests", "arguments": {}}'
-    )
+    flattened, _ = parse_text_tool_calls('{"tool": "run_visible_tests", "arguments": {}}')
     assert flattened[0].name == "run_visible_tests"
 
     named, _ = parse_text_tool_calls('{"name": "read_error", "arguments": {}}')

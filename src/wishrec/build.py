@@ -134,6 +134,7 @@ def _parse_all(
 
 def _presence_block(tasks: list) -> dict:
     """Field-presence counts and rates, overall and per source."""
+
     def count(tasks_subset: list) -> dict:
         counts = {field: 0 for field in FIELD_KEYS}
         for task in tasks_subset:
@@ -144,16 +145,12 @@ def _presence_block(tasks: list) -> dict:
         return {
             "denominator": n,
             "counts": counts,
-            "rates": {
-                field: round(counts[field] / n, 6) if n else None
-                for field in FIELD_KEYS
-            },
+            "rates": {field: round(counts[field] / n, 6) if n else None for field in FIELD_KEYS},
         }
 
     result = count(tasks)
     result["by_source"] = {
-        source: count([task for task in tasks if task.source == source])
-        for source in SOURCE_ORDER
+        source: count([task for task in tasks if task.source == source]) for source in SOURCE_ORDER
     }
     return result
 
@@ -170,19 +167,23 @@ def _level_char_stats(records: list[dict]) -> dict:
         }
     for source in SOURCE_ORDER:
         source_records = [record for record in records if record["source"] == source]
-        result["by_source"][source] = {
-            level: {
-                "min": min(record["meta"]["level_chars"][level] for record in source_records),
-                "mean": round(
-                    statistics.fmean(
-                        record["meta"]["level_chars"][level] for record in source_records
+        result["by_source"][source] = (
+            {
+                level: {
+                    "min": min(record["meta"]["level_chars"][level] for record in source_records),
+                    "mean": round(
+                        statistics.fmean(
+                            record["meta"]["level_chars"][level] for record in source_records
+                        ),
+                        1,
                     ),
-                    1,
-                ),
-                "max": max(record["meta"]["level_chars"][level] for record in source_records),
+                    "max": max(record["meta"]["level_chars"][level] for record in source_records),
+                }
+                for level in LEVELS
             }
-            for level in LEVELS
-        } if source_records else {}
+            if source_records
+            else {}
+        )
     return result
 
 
@@ -195,11 +196,7 @@ def _library_stats(records: list[dict], exclusions: list[dict]) -> dict:
             modules[module] += 1
             distributions[IMPORT_TO_DISTRIBUTION.get(module, module)] += 1
             by_source[record["source"]][module] += 1
-    missing = Counter(
-        item["missing_library"]
-        for item in exclusions
-        if item.get("missing_library")
-    )
+    missing = Counter(item["missing_library"] for item in exclusions if item.get("missing_library"))
     return {
         "kept": dict(sorted(modules.items())),
         "distributions": dict(sorted(distributions.items())),
@@ -253,9 +250,7 @@ def _write_summary(manifest: dict, stats: dict, out_dir: Path) -> None:
     print(f"artifact: {out_dir}")
     print(
         "rows: "
-        + ", ".join(
-            f"{source}={counts['rows'][source]}" for source in SOURCE_ORDER
-        )
+        + ", ".join(f"{source}={counts['rows'][source]}" for source in SOURCE_ORDER)
         + f" (total {counts['rows_total']})"
     )
     print(
@@ -400,9 +395,7 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
     assigned, split_info = assign_splits(kept, sizes=SPLIT_SIZES, seed=SPLIT_SEED)
-    split_of = {
-        task.key: split for split, tasks in assigned.items() for task in tasks
-    }
+    split_of = {task.key: split for split, tasks in assigned.items() for task in tasks}
     records = [task_record(task, split_of[task.key]) for task in kept]
     records.sort(key=lambda record: record["key"])
     split_counts = check_records(records)
@@ -489,9 +482,7 @@ def main(argv: list[str] | None = None) -> int:
         "sources": download_records,
         "counts": counts,
         "selection": {
-            key: value
-            for key, value in selection_info.items()
-            if key != "unused_task_keys"
+            key: value for key, value in selection_info.items() if key != "unused_task_keys"
         },
         "unused_task_keys": selection_info["unused_task_keys"],
         "split": split_stats,

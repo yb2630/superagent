@@ -20,9 +20,7 @@ def test_notebook_is_valid_json_with_compiling_code_cells():
     assert notebook["nbformat"] == 4
     assert len(notebook["cells"]) >= 20
     code_cells = [
-        "".join(cell["source"])
-        for cell in notebook["cells"]
-        if cell["cell_type"] == "code"
+        "".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code"
     ]
     assert len(code_cells) >= 10
     for index, source in enumerate(code_cells):

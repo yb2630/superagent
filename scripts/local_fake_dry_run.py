@@ -43,10 +43,7 @@ from wishrec.harness.runner import run_units  # noqa: E402
 from wishrec.harness.smoothing import smooth_tasks  # noqa: E402
 from wishrec.harness.llm import LLMClient  # noqa: E402
 
-SOLUTION = (
-    "def solution(*args, **kwargs):\n"
-    "    return None\n"
-)
+SOLUTION = "def solution(*args, **kwargs):\n    return None\n"
 
 
 def _usage(prompt: int = 12, completion: int = 6) -> dict:
@@ -57,9 +54,7 @@ def _usage(prompt: int = 12, completion: int = 6) -> dict:
     }
 
 
-def _completion(
-    *, content: str = "", tool_calls: list[tuple[str, dict]] | None = None
-) -> dict:
+def _completion(*, content: str = "", tool_calls: list[tuple[str, dict]] | None = None) -> dict:
     tool_calls = tool_calls or []
     return {
         "id": "chatcmpl-local-dry-run",
@@ -120,9 +115,7 @@ def _fake_response(payload: dict) -> dict:
         if any(message.get("role") == "tool" for message in messages):
             return _completion(content=json.dumps({"tool": "finish"}))
         if "echo" in system:
-            return _completion(
-                content=json.dumps({"tool": "echo", "arguments": {"value": "ok"}})
-            )
+            return _completion(content=json.dumps({"tool": "echo", "arguments": {"value": "ok"}}))
         return _completion(
             content=json.dumps(
                 {
@@ -265,9 +258,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"dry-run harness transport: {args.tool_mode}")
 
         print("== 2. L3 smoothing (500 train + 100 pilot)")
-        smoothing_tasks = load_tasks(
-            split="train", require_derived=False
-        ) + load_tasks(split="pilot", require_derived=False)
+        smoothing_tasks = load_tasks(split="train", require_derived=False) + load_tasks(
+            split="pilot", require_derived=False
+        )
         artifact = smooth_tasks(
             smoothing_tasks,
             LLMClient(config, temperature=0.0),

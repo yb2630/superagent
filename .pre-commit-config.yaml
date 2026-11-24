@@ -1,0 +1,70 @@
+# Pre-commit hooks.  Install once with `uvx pre-commit install`; CI runs the same hooks
+# with `uvx pre-commit run --all-files`.
+#
+# Ruff and mypy run from the locked project environment (`uv run --frozen`) so local hooks,
+# `make lint` and CI always use the same tool versions as uv.lock.
+#
+# Committed research artifacts are hash-checked by the test suite and must stay
+# byte-identical, so the whole data/, results/ and submitted-paper trees are excluded.
+exclude: |
+  (?x)^(
+    data/|
+    results/|
+    paper/milestone/submitted/|
+    .*\.(pdf|parquet|sty)$|
+    uv\.lock$
+  )
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+      - id: check-case-conflict
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.3
+    hooks:
+      - id: codespell
+        exclude: \.(ipynb|bib)$
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.33.1
+    hooks:
+      - id: zizmor
+
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --frozen ruff check --fix
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --frozen ruff format
+        language: system
+        types_or: [python, pyi]
+      - id: mypy
+        name: mypy
+        entry: uv run --frozen mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]

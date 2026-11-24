@@ -69,9 +69,7 @@ def test_h1_can_write_acceptance_tests():
 def test_h2_question_budget_is_five_and_extra_questions_are_rejected():
     responses = []
     for index in range(5):
-        responses.append(
-            tool_result("ask_stakeholder", {"question": f"question {index}?"})
-        )
+        responses.append(tool_result("ask_stakeholder", {"question": f"question {index}?"}))
         responses.append(text_result(f"answer {index}"))
     responses.append(tool_result("ask_stakeholder", {"question": "question 6?"}))
     responses.append(tool_result("write_file", {"path": "solution.py", "content": SOLUTION}))
@@ -124,9 +122,7 @@ def test_discard_asks_the_same_questions_but_withholds_the_answers():
             text_result("done"),
         ]
     )
-    result = run_repl_unit(
-        make_task(), get_condition("DISCARD"), llm, detector=FakeDetector()
-    )
+    result = run_repl_unit(make_task(), get_condition("DISCARD"), llm, detector=FakeDetector())
     assert result["questions"] == 2
     assert all(item["answer"] is None for item in result["detector_questions"])
     prompt = json.dumps(result["messages"])

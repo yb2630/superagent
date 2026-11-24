@@ -86,9 +86,8 @@ def _doctest_block(task: Task) -> str:
     if examples:
         return examples
     if task.visible_asserts.strip():
-        return (
-            "# visible assertions from a sibling task\n"
-            + "\n".join(f"# {line}" for line in task.visible_asserts.splitlines())
+        return "# visible assertions from a sibling task\n" + "\n".join(
+            f"# {line}" for line in task.visible_asserts.splitlines()
         )
     return ""
 
@@ -140,14 +139,11 @@ def detector_identity(detector_path: Path | None = None) -> dict:
         field: policy.get(field) for field in ("utility", "threshold_calibration")
     }
     semantic["training"] = {
-        field: training.get(field)
-        for field in ("seed", "folds", "l2", "epochs", "learning_rate")
+        field: training.get(field) for field in ("seed", "folds", "l2", "epochs", "learning_rate")
     }
     semantic["smoothing_sha256"] = smoothing.get("sha256")
     semantic["tasks_sha256"] = data.get("tasks_sha256")
-    identity["sha256"] = sha256_text(
-        json.dumps(semantic, sort_keys=True, ensure_ascii=False)
-    )
+    identity["sha256"] = sha256_text(json.dumps(semantic, sort_keys=True, ensure_ascii=False))
     identity["file_sha256"] = sha256_file(path)
     return identity
 
@@ -202,9 +198,7 @@ def _compact(result: dict) -> dict:
     }
 
 
-def summarise(
-    run_dir: Path, config: dict, *, planned_units: int | None = None
-) -> tuple[dict, str]:
+def summarise(run_dir: Path, config: dict, *, planned_units: int | None = None) -> tuple[dict, str]:
     conditions = config["conditions"]
     summaries = {}
     total_units = 0
@@ -226,9 +220,7 @@ def summarise(
                 units.append(unit)
         total_units += len(units)
         passes = sum(1 for unit in units if unit.get("pass"))
-        pass_at_1 = sum(
-            1 for unit in units if unit.get("pass_at_1", unit.get("pass"))
-        )
+        pass_at_1 = sum(1 for unit in units if unit.get("pass_at_1", unit.get("pass")))
         buckets: dict[str, int] = {}
         for unit in units:
             if unit.get("pass"):
@@ -236,9 +228,7 @@ def summarise(
             bucket = str(unit.get("bucket", "unknown"))
             buckets[bucket] = buckets.get(bucket, 0) + 1
         tokens = {
-            "input": sum(
-                int(unit.get("totals", {}).get("input_tokens", 0) or 0) for unit in units
-            ),
+            "input": sum(int(unit.get("totals", {}).get("input_tokens", 0) or 0) for unit in units),
             "output": sum(
                 int(unit.get("totals", {}).get("output_tokens", 0) or 0) for unit in units
             ),
@@ -367,9 +357,7 @@ def execute_unit(
             "evaluation": {},
             "self_check": None,
             "llm_calls": [],
-            "trace_events": [
-                {"event": "harness_error", "error": f"{type(exc).__name__}: {exc}"}
-            ],
+            "trace_events": [{"event": "harness_error", "error": f"{type(exc).__name__}: {exc}"}],
             "messages": [],
             "tools": {},
             "totals": {},
@@ -460,9 +448,7 @@ def run_units(
         artifact = load_smoothing(smoothing_path)
         changed = artifact.apply_to_tasks(tasks, require_all=True)
         if changed != len(tasks):
-            raise RuntimeError(
-                f"smoothed wishes cover {changed}/{len(tasks)} selected tasks"
-            )
+            raise RuntimeError(f"smoothed wishes cover {changed}/{len(tasks)} selected tasks")
 
     config = build_config(
         tasks,
@@ -486,9 +472,7 @@ def run_units(
                 f"run {run_id!r} exists with config {previous.get('config_hash')} != {digest}; "
                 "rerun with --force"
             )
-    shards_done = [
-        entry for entry in (previous.get("shards") or []) if isinstance(entry, dict)
-    ]
+    shards_done = [entry for entry in (previous.get("shards") or []) if isinstance(entry, dict)]
 
     level_manifest = load_manifest()
     detector = None
@@ -507,19 +491,13 @@ def run_units(
         for task in tasks
         for sample_index in range(max(1, samples))
     ]
-    planned = [
-        unit
-        for index, unit in enumerate(planned_all)
-        if index % shards == shard
-    ]
+    planned = [unit for index, unit in enumerate(planned_all) if index % shards == shard]
     manifest = {
         "run_id": run_id,
         "created_at": previous.get("created_at") or utc_now_iso(),
         "git": git_info(),
         "environment": environment_info(),
-        "level_manifest_sha256": sha256_text(
-            json.dumps(level_manifest, sort_keys=True)
-        ),
+        "level_manifest_sha256": sha256_text(json.dumps(level_manifest, sort_keys=True)),
         "config": config,
         "config_hash": digest,
         "planned_units": len(planned_all),
@@ -592,9 +570,7 @@ def run_units(
                 progress(f"[{completed}/{len(planned)}] ERROR {condition.name} {task.key}")
                 continue
             if result.get("api_error"):
-                errors.append(
-                    f"{condition.name}/{task.key}/{sample_index}: {result['api_error']}"
-                )
+                errors.append(f"{condition.name}/{task.key}/{sample_index}: {result['api_error']}")
             progress(
                 f"[{completed}/{len(planned)}] {condition.name} {task.key} "
                 f"sample={sample_index} {'PASS' if result.get('pass') else 'fail'} "
@@ -603,17 +579,13 @@ def run_units(
 
     stored_records = _stored_unit_records(output_dir, config, digest)
     stored = len(stored_records)
-    summary, report = summarise(
-        output_dir, config, planned_units=len(planned_all)
-    )
+    summary, report = summarise(output_dir, config, planned_units=len(planned_all))
     summary["status"] = "complete" if stored >= len(planned_all) else "partial"
     atomic_write_json(output_dir / "summary.json", summary)
     atomic_write_text(output_dir / "report.md", report)
     atomic_write_text(
         output_dir / "results.jsonl",
-        "\n".join(
-            json.dumps(_compact(result), sort_keys=True) for result in stored_records
-        )
+        "\n".join(json.dumps(_compact(result), sort_keys=True) for result in stored_records)
         + ("\n" if stored_records else ""),
     )
     shard_entry = {
@@ -652,6 +624,7 @@ def run_units(
             f"surviving shards are resumable"
         )
     return {"manifest": manifest, "summary": summary, "output_dir": str(output_dir)}
+
 
 def _task_selection(args) -> list[Task]:
     if args.split == "heldout":
@@ -736,11 +709,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         planned = len(tasks) * len(conditions) * max(1, args.samples)
         shard_units = len(
-            [
-                index
-                for index in range(planned)
-                if index % max(1, args.shards) == args.shard
-            ]
+            [index for index in range(planned) if index % max(1, args.shards) == args.shard]
         )
         print(
             json.dumps(

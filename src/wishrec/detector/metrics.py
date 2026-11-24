@@ -54,9 +54,7 @@ def per_label_f1(
     }
 
 
-def macro_f1(
-    labels: np.ndarray, probabilities: np.ndarray, *, threshold: float = 0.5
-) -> float:
+def macro_f1(labels: np.ndarray, probabilities: np.ndarray, *, threshold: float = 0.5) -> float:
     scores = per_label_f1(labels, probabilities, threshold=threshold)
     return float(np.mean(list(scores.values())))
 
@@ -65,37 +63,27 @@ def _rounded(value: float | None) -> float | None:
     return None if value is None else round(float(value), 6)
 
 
-def calibration_summary(
-    labels: np.ndarray, probabilities: np.ndarray, *, bins: int = 10
-) -> dict:
+def calibration_summary(labels: np.ndarray, probabilities: np.ndarray, *, bins: int = 10) -> dict:
     per_label = {}
     for index, label in enumerate(LABELS):
         per_label[label] = {
             "brier": round(brier_score(labels[:, index], probabilities[:, index]), 6),
             "ece": round(
-                expected_calibration_error(
-                    labels[:, index], probabilities[:, index], bins=bins
-                ),
+                expected_calibration_error(labels[:, index], probabilities[:, index], bins=bins),
                 6,
             ),
             "log_loss": round(log_loss(labels[:, index], probabilities[:, index]), 6),
-            "reliability": reliability_table(
-                labels[:, index], probabilities[:, index], bins=bins
-            ),
+            "reliability": reliability_table(labels[:, index], probabilities[:, index], bins=bins),
         }
     flat_labels = np.asarray(labels).reshape(-1)
     flat_probabilities = np.asarray(probabilities).reshape(-1)
     return {
         "bins": bins,
         "brier": round(brier_score(flat_labels, flat_probabilities), 6),
-        "ece": round(
-            expected_calibration_error(flat_labels, flat_probabilities, bins=bins), 6
-        ),
+        "ece": round(expected_calibration_error(flat_labels, flat_probabilities, bins=bins), 6),
         "log_loss": round(log_loss(flat_labels, flat_probabilities), 6),
         "per_label": per_label,
-        "reliability_pooled": reliability_table(
-            flat_labels, flat_probabilities, bins=bins
-        ),
+        "reliability_pooled": reliability_table(flat_labels, flat_probabilities, bins=bins),
     }
 
 
@@ -105,11 +93,7 @@ def detection_summary(
     labels = np.asarray(labels)
     probabilities = np.asarray(probabilities, dtype=np.float64)
     f1_scores = per_label_f1(labels, probabilities, threshold=threshold)
-    varying = [
-        label
-        for index, label in enumerate(LABELS)
-        if _both_classes(labels[:, index])
-    ]
+    varying = [label for index, label in enumerate(LABELS) if _both_classes(labels[:, index])]
     per_label = {}
     for index, label in enumerate(LABELS):
         per_label[label] = {
@@ -125,9 +109,7 @@ def detection_summary(
         "threshold": threshold,
         "macro_f1": round(float(np.mean(list(f1_scores.values()))), 6),
         "macro_f1_varying_labels": (
-            round(float(np.mean([f1_scores[label] for label in varying])), 6)
-            if varying
-            else None
+            round(float(np.mean([f1_scores[label] for label in varying])), 6) if varying else None
         ),
         "varying_labels": varying,
         "per_label": per_label,
@@ -158,20 +140,14 @@ def selection_summary(labels: np.ndarray, selected: np.ndarray) -> dict:
     return {
         "mean_questions": round(float(counts.mean()), 4),
         "distribution": {
-            str(int(value)): int(frequency)
-            for value, frequency in zip(values, frequencies)
+            str(int(value)): int(frequency) for value, frequency in zip(values, frequencies)
         },
         "selected_total": selected_total,
         "true_positives": true_positive,
-        "precision": round(true_positive / selected_total, 6)
-        if selected_total
-        else None,
-        "recall_of_present_categories": round(true_positive / positives, 6)
-        if positives
-        else None,
+        "precision": round(true_positive / selected_total, 6) if selected_total else None,
+        "recall_of_present_categories": round(true_positive / positives, 6) if positives else None,
         "selection_rate_by_category": {
-            label: round(float(chosen[:, index].mean()), 4)
-            for index, label in enumerate(LABELS)
+            label: round(float(chosen[:, index].mean()), 4) for index, label in enumerate(LABELS)
         },
     }
 

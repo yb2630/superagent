@@ -113,9 +113,7 @@ def tool_result(name: str, arguments: dict | str, *, tool_id: str = "call-1") ->
             ToolCall(
                 id=tool_id,
                 name=name,
-                arguments=arguments
-                if isinstance(arguments, str)
-                else json.dumps(arguments),
+                arguments=arguments if isinstance(arguments, str) else json.dumps(arguments),
             )
         ],
         model="fake",

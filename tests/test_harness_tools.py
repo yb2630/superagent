@@ -25,7 +25,9 @@ def test_tool_schemas_have_the_four_milestone_tools():
     assert [schema["function"]["name"] for schema in with_ask][-1] == "ask_stakeholder"
     h1 = tool_schemas(allow_acceptance=True, allow_ask=True)
     assert "acceptance_tests.py" in h1[0]["function"]["parameters"]["properties"]["path"]["enum"]
-    assert "acceptance_tests.py" not in base[0]["function"]["parameters"]["properties"]["path"]["enum"]
+    assert (
+        "acceptance_tests.py" not in base[0]["function"]["parameters"]["properties"]["path"]["enum"]
+    )
 
 
 def test_write_file_passes_visible_tests_and_read_error_returns_traceback(tmp_path):
@@ -85,9 +87,7 @@ def test_acceptance_tests_are_writable_only_in_h1(tmp_path):
 def test_write_file_size_limit(tmp_path):
     tool = session(tmp_path)
     too_big = "x = 1\n" * (MAX_CONTENT_BYTES // 5 + 10)
-    assert "larger than" in tool.execute(
-        "write_file", {"path": "solution.py", "content": too_big}
-    )
+    assert "larger than" in tool.execute("write_file", {"path": "solution.py", "content": too_big})
 
 
 def test_ask_stakeholder_consumes_budget_and_disappears_from_schemas(tmp_path):

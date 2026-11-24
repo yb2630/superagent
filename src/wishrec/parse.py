@@ -112,9 +112,7 @@ def _strip_annotations(def_source: str) -> str:
         raise ParseError(f"could not parse def header: {def_source!r}")
     fn.returns = None
     fn.decorator_list = []
-    for argument in (
-        list(fn.args.posonlyargs) + list(fn.args.args) + list(fn.args.kwonlyargs)
-    ):
+    for argument in list(fn.args.posonlyargs) + list(fn.args.args) + list(fn.args.kwonlyargs):
         argument.annotation = None
     if fn.args.vararg is not None:
         fn.args.vararg.annotation = None
@@ -221,9 +219,7 @@ def _validate_intent(intent: str) -> None:
     if not intent:
         raise ParseError("empty intent after docstring parsing")
     if len(intent.split()) < MIN_INTENT_TOKENS:
-        raise ParseError(
-            f"intent has fewer than {MIN_INTENT_TOKENS} tokens: {intent!r}"
-        )
+        raise ParseError(f"intent has fewer than {MIN_INTENT_TOKENS} tokens: {intent!r}")
     if not INTENT_VERBS.search(intent):
         raise ParseError(f"intent has no requirement verb: {intent!r}")
 
@@ -313,11 +309,7 @@ def _extract_docstring_parts(docstring: str) -> tuple[str, str]:
                     and not EXAMPLE_LABEL.match(current)
                 ):
                     break
-                if (
-                    current_stripped == ""
-                    and next_nonblank
-                    and SECTION_LABEL.match(next_nonblank)
-                ):
+                if current_stripped == "" and next_nonblank and SECTION_LABEL.match(next_nonblank):
                     break
                 examples.append(current_stripped)
                 index += 1
@@ -401,7 +393,11 @@ def _humaneval_visible_test(
         ]
     truncated.body.append(
         ast.Expr(
-            value=ast.Call(func=ast.Name(id="check", ctx=ast.Load()), args=[ast.Name(id=entry_point, ctx=ast.Load())], keywords=[])
+            value=ast.Call(
+                func=ast.Name(id="check", ctx=ast.Load()),
+                args=[ast.Name(id=entry_point, ctx=ast.Load())],
+                keywords=[],
+            )
         )
     )
     ast.fix_missing_locations(truncated)
@@ -415,8 +411,7 @@ def _humaneval_visible_test(
     else:
         assert inputs_assign is not None
         assertions = (
-            f"for inp in {ast.unparse(inputs_assign.value)}:\n"
-            f"    print({entry_point}(*inp))"
+            f"for inp in {ast.unparse(inputs_assign.value)}:\n    print({entry_point}(*inp))"
         )
     return visible, assertions, cases
 
@@ -462,9 +457,7 @@ def _mbpp_entry_point(test_source: str, canonical_code: str) -> str:
             if isinstance(first, ast.Call) and isinstance(first.func, ast.Name):
                 names.append(first.func.id)
     code_tree = ast.parse(canonical_code)
-    defined = {
-        node.name for node in ast.walk(code_tree) if isinstance(node, ast.FunctionDef)
-    }
+    defined = {node.name for node in ast.walk(code_tree) if isinstance(node, ast.FunctionDef)}
     for name in names:
         if name in defined:
             return name
@@ -591,7 +584,9 @@ def parse_mbppplus(row: dict, *, visible_tests: str = DEFAULT_VISIBLE_TESTS) -> 
     test_list = [str(item).strip() for item in row.get("test_list") or []]
     if len(test_list) < 3:
         raise ParseError("MBPP+ task has fewer than three test_list assertions")
-    test_imports = [str(item).strip() for item in row.get("test_imports") or [] if str(item).strip()]
+    test_imports = [
+        str(item).strip() for item in row.get("test_imports") or [] if str(item).strip()
+    ]
     examples = "\n".join(test_list)
     if visible_tests == "inputs_only":
         visible_asserts = _mbpp_inputs_only_asserts(test_list[:3], entry_point)
@@ -788,10 +783,7 @@ def parse_bigcodebench(row: dict, *, visible_tests: str = DEFAULT_VISIBLE_TESTS)
     signature_untyped = _strip_annotations(typed_def)
     stub = make_stub(_top_level_preamble(complete_prompt, entry_point), signature_untyped)
     canonical = (
-        complete_prompt.rstrip("\n")
-        + "\n"
-        + str(row["canonical_solution"]).rstrip("\n")
-        + "\n"
+        complete_prompt.rstrip("\n") + "\n" + str(row["canonical_solution"]).rstrip("\n") + "\n"
     )
     try:
         doc = json.loads(row["doc_struct"])
@@ -850,9 +842,7 @@ def parse_bigcodebench(row: dict, *, visible_tests: str = DEFAULT_VISIBLE_TESTS)
 # --------------------------------------------------------------------------------------
 # Public entry point
 # --------------------------------------------------------------------------------------
-def parse_task(
-    source: str, row: dict, *, visible_tests: str = DEFAULT_VISIBLE_TESTS
-) -> ParsedTask:
+def parse_task(source: str, row: dict, *, visible_tests: str = DEFAULT_VISIBLE_TESTS) -> ParsedTask:
     _validate_visible_tests(visible_tests)
     if source == "humanevalplus":
         return parse_humanevalplus(row, visible_tests=visible_tests)

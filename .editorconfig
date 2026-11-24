@@ -1,0 +1,25 @@
+# Editor settings shared by every contributor.  See https://editorconfig.org.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,toml,json,md,tex,bib}]
+indent_size = 2
+
+[*.md]
+# Two trailing spaces are a Markdown line break.
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
+
+# Committed artifacts are hash-checked; editors must not rewrite them.
+[{data,results}/**]
+insert_final_newline = unset
+trim_trailing_whitespace = unset

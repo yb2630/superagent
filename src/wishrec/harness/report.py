@@ -99,16 +99,10 @@ def _union_config(configs: list[dict]) -> dict:
     }
 
 
-def _summarise_condition(
-    unit_list: list[dict], task_keys: set[str]
-) -> dict:
+def _summarise_condition(unit_list: list[dict], task_keys: set[str]) -> dict:
     selected = [unit for unit in unit_list if unit.get("task_key") in task_keys]
     passes = sum(1 for unit in selected if unit.get("pass"))
-    pass_at_1 = sum(
-        1
-        for unit in selected
-        if unit.get("pass_at_1", unit.get("pass"))
-    )
+    pass_at_1 = sum(1 for unit in selected if unit.get("pass_at_1", unit.get("pass")))
     buckets: dict[str, int] = {}
     for unit in selected:
         if unit.get("pass"):
@@ -148,9 +142,7 @@ def _recovery(pass_at_1: float | None, baseline: dict) -> float | None:
     return round((pass_at_1 - h0) / (b1 - h0), 4)
 
 
-def build_report(
-    run_dirs: list[Path], *, tasks_path: Path | None = None
-) -> dict:
+def build_report(run_dirs: list[Path], *, tasks_path: Path | None = None) -> dict:
     units, configs = load_runs([Path(path) for path in run_dirs])
     config = _union_config(configs)
     task_keys = set(config["task_keys"])
@@ -161,14 +153,10 @@ def build_report(
     heldout = {key for key, record in tasks.items() if record.get("split") == "heldout"}
     # Check the units themselves, not just the manifest task list: a stray unit written
     # outside the configured set must still be reported as held-out usage.
-    heldout_used = sorted(
-        {str(unit.get("task_key")) for unit in units.values()} & heldout
-    )
+    heldout_used = sorted({str(unit.get("task_key")) for unit in units.values()} & heldout)
     unit_tasks = {str(unit.get("task_key")) for unit in units.values()}
     unknown_tasks = sorted(unit_tasks - task_keys - heldout)
-    units = {
-        key: unit for key, unit in units.items() if str(unit.get("task_key")) in task_keys
-    }
+    units = {key: unit for key, unit in units.items() if str(unit.get("task_key")) in task_keys}
 
     conditions = config["conditions"]
     expected = len(task_keys) * len(conditions) * config["samples"]
@@ -186,9 +174,7 @@ def build_report(
     by_category: dict[str, dict] = {}
     for category in CATEGORY_ATTRIBUTION:
         subset = {
-            key
-            for key in task_keys
-            if bool(tasks[key].get("field_presence", {}).get(category))
+            key for key in task_keys if bool(tasks[key].get("field_presence", {}).get(category))
         }
         item = {"label": FIELD_LABELS[category], "tasks": len(subset), "conditions": {}}
         for condition in conditions:
@@ -213,9 +199,7 @@ def build_report(
             continue
         shards = manifest.get("shards") or []
         shard_seconds = sum(
-            float(entry.get("duration_s") or 0.0)
-            for entry in shards
-            if isinstance(entry, dict)
+            float(entry.get("duration_s") or 0.0) for entry in shards if isinstance(entry, dict)
         )
         manifests.append(
             {
@@ -235,12 +219,8 @@ def build_report(
         for bucket, count in item["buckets"].items():
             bucket_totals[bucket] = bucket_totals.get(bucket, 0) + count
     token_totals = {
-        "input_tokens": sum(
-            item["tokens"]["input_tokens"] for item in per_condition.values()
-        ),
-        "output_tokens": sum(
-            item["tokens"]["output_tokens"] for item in per_condition.values()
-        ),
+        "input_tokens": sum(item["tokens"]["input_tokens"] for item in per_condition.values()),
+        "output_tokens": sum(item["tokens"]["output_tokens"] for item in per_condition.values()),
     }
     unit_duration = sum(float(unit.get("duration_s") or 0.0) for unit in units.values())
     missing_units = {
@@ -270,8 +250,7 @@ def build_report(
         "recovery_baselines": {
             "B1": per_condition.get("B1", {}).get("pass_rate"),
             "H0": per_condition.get("H0", {}).get("pass_rate"),
-            "definition": "(pass@1(condition) - pass@1(H0)) / "
-            "(pass@1(B1) - pass@1(H0))",
+            "definition": "(pass@1(condition) - pass@1(H0)) / (pass@1(B1) - pass@1(H0))",
         },
         "by_category": by_category,
         "failure_buckets": dict(sorted(bucket_totals.items())),
@@ -290,8 +269,7 @@ def build_report(
         },
         "manifests": manifests,
         "notes": [
-            "Recovery is computed from measured units only; B1 and H0 are the ceiling and "
-            "floor.",
+            "Recovery is computed from measured units only; B1 and H0 are the ceiling and floor.",
             "Per-category recovery groups tasks by the L0 category that the wish omits; "
             "the pilot does not run separate L2_c single-field-drop conditions.",
             "The 300 held-out tasks must not appear in any pilot unit.",
@@ -372,9 +350,7 @@ def render_report(summary: dict) -> str:
         lines.append("## Missing units")
         lines.append("")
         for condition, item in summary["missing_units"].items():
-            lines.append(
-                f"- {condition}: {item['completed']}/{item['expected']} completed"
-            )
+            lines.append(f"- {condition}: {item['completed']}/{item['expected']} completed")
         lines.append("")
     lines.extend(
         [
@@ -405,9 +381,7 @@ def main(argv: list[str] | None = None) -> int:
     atomic_write_text(output / "report.md", summary["report"])
     print(summary["report"])
     print(f"wrote {output / 'summary.json'} and {output / 'report.md'}")
-    if args.require_complete and (
-        not summary["complete"] or summary["heldout_tasks_used"]
-    ):
+    if args.require_complete and (not summary["complete"] or summary["heldout_tasks_used"]):
         print("ERROR: pilot is incomplete or used a held-out task")
         return 1
     return 0

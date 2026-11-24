@@ -124,9 +124,7 @@ class SmoothingArtifact:
     def missing(self, keys: Iterable[str]) -> list[str]:
         return sorted(str(key) for key in keys if str(key) not in self.records)
 
-    def apply_to_records(
-        self, records: Sequence[dict], *, require_all: bool = True
-    ) -> int:
+    def apply_to_records(self, records: Sequence[dict], *, require_all: bool = True) -> int:
         """Replace ``levels[L3]`` on task records in place; return the changed count."""
         missing = self.missing(record["key"] for record in records)
         if missing and require_all:

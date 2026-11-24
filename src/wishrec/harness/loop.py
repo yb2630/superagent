@@ -69,16 +69,13 @@ def _call_record(result: ChatResult, purpose: str) -> dict:
         "finish_reason": result.finish_reason,
         "content": (result.content or "")[:3000],
         "tool_calls": [
-            {"name": call.name, "arguments": call.arguments[:2000]}
-            for call in result.tool_calls
+            {"name": call.name, "arguments": call.arguments[:2000]} for call in result.tool_calls
         ],
         "usage": dict(result.usage or {}),
     }
 
 
-def evaluate_solution(
-    task, solution_source: str, *, timeout: float = HIDDEN_TIMEOUT
-) -> dict:
+def evaluate_solution(task, solution_source: str, *, timeout: float = HIDDEN_TIMEOUT) -> dict:
     """Run the full hidden suite in a fresh workspace with only the two files."""
     with tempfile.TemporaryDirectory(prefix="wish-eval-") as temporary:
         workspace = Path(temporary)
@@ -194,9 +191,7 @@ def run_repl_unit(
         for key in totals:
             totals[key] += prepass["totals"][key]
         unanswered = prepass["unanswered"]
-        trace_events.append(
-            {"event": "detector_prepass", "questions": detector_questions}
-        )
+        trace_events.append({"event": "detector_prepass", "questions": detector_questions})
 
     with tempfile.TemporaryDirectory(prefix="wish-loop-") as temporary:
         workspace = Path(temporary)
@@ -284,9 +279,7 @@ def run_repl_unit(
         if condition.name == "H3" and answers:
             solution_before = (workspace / "solution.py").read_text(encoding="utf-8")
             check_tools = [
-                schema
-                for schema in tool_schemas()
-                if schema["function"]["name"] == "write_file"
+                schema for schema in tool_schemas() if schema["function"]["name"] == "write_file"
             ]
             try:
                 check_result = llm.chat(
@@ -318,9 +311,7 @@ def run_repl_unit(
                 trace_events.append({"event": "self_check", **self_check})
             except Exception as exc:  # noqa: BLE001
                 api_error = api_error or f"self_check {type(exc).__name__}: {exc}"
-                trace_events.append(
-                    {"event": "self_check_error", "error": str(exc)[:1000]}
-                )
+                trace_events.append({"event": "self_check_error", "error": str(exc)[:1000]})
 
         final_solution = (workspace / "solution.py").read_text(encoding="utf-8")
         evaluation = evaluate_solution(task, final_solution)
@@ -373,9 +364,7 @@ def run_repl_unit(
     }
 
 
-def _direct_one(
-    task, condition: Condition, llm, *, seed: int, include_visible: bool
-) -> dict:
+def _direct_one(task, condition: Condition, llm, *, seed: int, include_visible: bool) -> dict:
     messages = (
         frontier_messages(task)
         if condition.b3

@@ -27,9 +27,7 @@ def _row(condition, task, sample, *, passed, pass_at_1=None):
 
 def _write_results(tmp_path, rows, *, name="results.jsonl"):
     path = tmp_path / name
-    path.write_text(
-        "\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8"
-    )
+    path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
     return path
 
 
@@ -87,9 +85,7 @@ def test_bootstrap_contrasts_are_paired_and_deterministic(tmp_path):
     assert second["excludes_zero"] is False
     assert summary["bootstrap"]["paired"] is True
 
-    again = build_bootstrap(
-        results, resamples=200, seed=7, contrasts=(("B1", "H0"), ("B2", "H0"))
-    )
+    again = build_bootstrap(results, resamples=200, seed=7, contrasts=(("B1", "H0"), ("B2", "H0")))
     assert again["contrasts"] == summary["contrasts"]
 
 
@@ -124,8 +120,7 @@ def _summary(path):
         "tasks": 3,
         "heldout_tasks_used": 0,
         "conditions_summary": {
-            name: {"pass_at_1": value, "units": 9}
-            for name, value in conditions.items()
+            name: {"pass_at_1": value, "units": 9} for name, value in conditions.items()
         },
         "by_category": {
             "constraints": {
@@ -164,9 +159,7 @@ def test_bootstrap_attaches_checked_per_category_grouping(tmp_path):
     grouping = summary["by_category"]
     assert set(grouping) == {"constraints"}
     assert grouping["constraints"]["tasks"] == 3
-    assert grouping["constraints"]["conditions"]["B2"]["pass_at_1"] == pytest.approx(
-        1 / 9
-    )
+    assert grouping["constraints"]["conditions"]["B2"]["pass_at_1"] == pytest.approx(1 / 9)
     markdown = render_markdown(summary)
     assert "Per-category grouping" in markdown
     assert "| constraints | 3 |" in markdown
@@ -206,9 +199,7 @@ def test_bootstrap_cli_writes_json_and_markdown(tmp_path):
     assert code == 0
     saved = json.loads(output.read_text(encoding="utf-8"))
     assert saved["results"] == str(results)
-    assert [item["name"] for item in saved["contrasts"]] == [
-        f"{a}-{b}" for a, b in CONTRASTS
-    ]
+    assert [item["name"] for item in saved["contrasts"]] == [f"{a}-{b}" for a, b in CONTRASTS]
     assert "paired task-level bootstrap" in markdown.read_text(encoding="utf-8")
 
 
@@ -219,6 +210,4 @@ def test_bootstrap_indices_are_shared_across_contrasts(tmp_path):
 
     indices = bootstrap_indices(10, 100, 20261121)
     differences = np.linspace(-1.0, 1.0, 10)
-    assert paired_interval(differences, indices) == paired_interval(
-        differences, indices
-    )
+    assert paired_interval(differences, indices) == paired_interval(differences, indices)

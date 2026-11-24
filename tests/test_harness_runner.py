@@ -89,9 +89,7 @@ def test_summarise_counts_passes_and_buckets(tmp_path):
     assert "| H0 | 1/2 |" in report
 
 
-def test_runner_runs_all_nine_conditions_end_to_end_through_a_fake_endpoint(
-    tmp_path, monkeypatch
-):
+def test_runner_runs_all_nine_conditions_end_to_end_through_a_fake_endpoint(tmp_path, monkeypatch):
     with FakeEndpoint(handler=generic_response) as endpoint:
         monkeypatch.setenv("VLLM_BASE_URL", endpoint.base_url)
         monkeypatch.setenv("VLLM_API_KEY", "EMPTY")

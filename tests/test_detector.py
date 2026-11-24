@@ -38,10 +38,7 @@ def synthetic_record(index: int, split: str = "train") -> dict:
         "constraints": index % 3 == 0,
         "error_behaviour": index % 4 == 0,
     }
-    fields = {
-        label: f"{label} content {index}" if present[label] else ""
-        for label in LABELS
-    }
+    fields = {label: f"{label} content {index}" if present[label] else "" for label in LABELS}
     return {
         "key": f"synthetic/{split}/{index}",
         "source": "humanevalplus",
@@ -72,9 +69,7 @@ def write_synthetic_artifact(path, train=500, heldout=300, extra_train=None):
     records += [synthetic_record(index, "heldout") for index in range(heldout)]
     if extra_train:
         records.extend(extra_train)
-    path.write_text(
-        "\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8"
-    )
+    path.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
     return records
 
 
@@ -180,7 +175,9 @@ def test_question_policy_always_asks_two_or_three_and_never_intent():
     calibration = calibrate_utility_policy(probabilities)
     selected = clamp_selection(probabilities, calibration["threshold"])
     counts = selected.sum(axis=1)
-    assert set(np.unique(counts)) <= set(range(QUESTION_COUNT_RANGE[0], QUESTION_COUNT_RANGE[1] + 1))
+    assert set(np.unique(counts)) <= set(
+        range(QUESTION_COUNT_RANGE[0], QUESTION_COUNT_RANGE[1] + 1)
+    )
     assert not selected[:, 0].any()
     assert calibration["within_range"] is True
     assert calibration["utility"]["intent"] == 0.0
@@ -201,9 +198,7 @@ def test_utility_scores_multiply_presence_by_utility_and_threshold_decisions():
 
 
 def test_policy_summary_reports_distribution_and_utility_recall():
-    labels = np.asarray(
-        [[1, 1, 1, 1, 0], [1, 1, 1, 0, 1], [1, 1, 0, 1, 0], [1, 1, 1, 0, 1]]
-    )
+    labels = np.asarray([[1, 1, 1, 1, 0], [1, 1, 1, 0, 1], [1, 1, 0, 1, 0], [1, 1, 1, 0, 1]])
     probabilities = labels.astype(float) * 0.8 + 0.1
     summary = policy_summary(labels, probabilities)
     assert summary["policy"] == "predicted_presence_x_utility"
@@ -242,8 +237,7 @@ def _trained_model(dimension: int = 8) -> dict:
         },
         "head": head.to_dict(),
         "calibrators": [
-            {"slope": 1.0, "intercept": 0.0, "constant": False, "rate": None}
-            for _ in LABELS
+            {"slope": 1.0, "intercept": 0.0, "constant": False, "rate": None} for _ in LABELS
         ],
         "threshold": 0.3,
         "policy": {"utility": dict(UTILITY)},

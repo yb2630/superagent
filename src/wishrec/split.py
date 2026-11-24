@@ -16,17 +16,16 @@ from .config import (
 
 
 def _natural_key(text: str) -> tuple:
-    return tuple(
-        int(part) if part.isdigit() else part
-        for part in re.split(r"(\d+)", text)
-    )
+    return tuple(int(part) if part.isdigit() else part for part in re.split(r"(\d+)", text))
 
 
 def _sorted_pool(tasks: list) -> list:
     return sorted(tasks, key=lambda task: _natural_key(task.source_task_id))
 
 
-def apportion(total: int, weights: dict[str, int], caps: dict[str, int] | None = None) -> dict[str, int]:
+def apportion(
+    total: int, weights: dict[str, int], caps: dict[str, int] | None = None
+) -> dict[str, int]:
     """Largest-remainder apportionment of ``total`` over weighted buckets.
 
     ``caps`` limits each bucket (used for the per-split source quotas).  Ties are broken
@@ -42,9 +41,7 @@ def apportion(total: int, weights: dict[str, int], caps: dict[str, int] | None =
     if sum(cap_map.values()) < total:
         raise ValueError("caps cannot hold the requested total")
     exact = {name: total * weights[name] / weight_sum for name in names}
-    allocation = {
-        name: min(int(exact[name]), cap_map[name]) for name in names
-    }
+    allocation = {name: min(int(exact[name]), cap_map[name]) for name in names}
     remainder = total - sum(allocation.values())
     # Fractional parts after flooring; tied buckets are ordered by name.
     order = sorted(
@@ -112,10 +109,10 @@ def select_kept(
 
     kept = sorted(kept, key=lambda task: task.key)
     pool_counts = {source: len(by_source.get(source, [])) for source in SOURCE_ORDER}
-    kept_counts = {source: sum(1 for task in kept if task.source == source) for source in SOURCE_ORDER}
-    unused_counts = {
-        source: pool_counts[source] - kept_counts[source] for source in SOURCE_ORDER
+    kept_counts = {
+        source: sum(1 for task in kept if task.source == source) for source in SOURCE_ORDER
     }
+    unused_counts = {source: pool_counts[source] - kept_counts[source] for source in SOURCE_ORDER}
     info = {
         "selection_seed": seed,
         "target_tasks": target,

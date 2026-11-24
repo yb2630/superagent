@@ -10,7 +10,11 @@ RESULTS = ROOT / "results" / "levels"
 
 
 def main() -> None:
-    tasks = [json.loads(line) for line in (RESULTS / "tasks.jsonl").read_text().splitlines() if line.strip()]
+    tasks = [
+        json.loads(line)
+        for line in (RESULTS / "tasks.jsonl").read_text().splitlines()
+        if line.strip()
+    ]
     manifest = json.loads((RESULTS / "manifest.json").read_text())
     stats = json.loads((RESULTS / "stats.json").read_text())
     splits = ("train", "evolution", "heldout", "pilot")
@@ -57,7 +61,12 @@ def main() -> None:
     for name in ("tasks.jsonl", "manifest.json", "stats.json"):
         print(name, (RESULTS / name).stat().st_size)
     print("\ntop-level record keys:", sorted(tasks[0]))
-    print("excluded keys:", len(manifest["exclusions"]), "unused:", {k: len(v) for k, v in manifest["unused_task_keys"].items()})
+    print(
+        "excluded keys:",
+        len(manifest["exclusions"]),
+        "unused:",
+        {k: len(v) for k, v in manifest["unused_task_keys"].items()},
+    )
     print("source kept counts:", {s: sum(1 for t in tasks if t["source"] == s) for s in sources})
 
 

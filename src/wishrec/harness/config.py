@@ -117,9 +117,7 @@ def write_jsonl(path: Path, records: list[dict]) -> None:
 
 def read_jsonl(path: Path) -> list[dict]:
     return [
-        json.loads(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
+        json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
     ]
 
 
@@ -221,7 +219,10 @@ def frontier_config(environ: dict[str, str] | None = None) -> EndpointConfig:
 
 def harness_source_hash() -> str:
     digest = hashlib.sha256()
-    for directory in (Path(__file__).resolve().parent, Path(__file__).resolve().parents[1] / "detector"):
+    for directory in (
+        Path(__file__).resolve().parent,
+        Path(__file__).resolve().parents[1] / "detector",
+    ):
         if not directory.exists():
             continue
         for path in sorted(directory.glob("*.py")):

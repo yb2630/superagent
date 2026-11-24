@@ -28,8 +28,10 @@ from .policy import clamp_selection, utility_scores
 
 
 def model_path(run_id: str = "r1") -> Path:
-    return RESULTS_DIR / "detector" / "model.json" if run_id == "r1" else (
-        RESULTS_DIR / "detector" / run_id / "model.json"
+    return (
+        RESULTS_DIR / "detector" / "model.json"
+        if run_id == "r1"
+        else (RESULTS_DIR / "detector" / run_id / "model.json")
     )
 
 
@@ -52,9 +54,7 @@ class TrainedDetector:
 
     def __init__(self, model: dict, *, encoder_fn=None):
         if tuple(model.get("labels") or ()) != tuple(LABELS):
-            raise ValueError(
-                f"model labels {model.get('labels')} do not match {LABELS}"
-            )
+            raise ValueError(f"model labels {model.get('labels')} do not match {LABELS}")
         self.model = model
         self.labels = tuple(model["labels"])
         self.head = LinearHead.from_dict(model["head"])
@@ -101,9 +101,7 @@ class TrainedDetector:
         scores = utility_scores(probabilities, self.labels)[0]
         chosen = [
             index
-            for index in sorted(
-                range(len(self.labels)), key=lambda j: (-scores[j], j)
-            )
+            for index in sorted(range(len(self.labels)), key=lambda j: (-scores[j], j))
             if selected[index]
         ][:budget]
         return [

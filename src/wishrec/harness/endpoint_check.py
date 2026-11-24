@@ -98,10 +98,7 @@ def _probe(config: EndpointConfig, tool_mode: str) -> dict:
             "tool_calls": [],
             "content": "",
         }
-    calls = [
-        {"name": call.name, "arguments": call.arguments[:500]}
-        for call in result.tool_calls
-    ]
+    calls = [{"name": call.name, "arguments": call.arguments[:500]} for call in result.tool_calls]
     return {
         "ok": bool(calls),
         "transport": result.transport,
@@ -211,18 +208,22 @@ def main(argv: list[str] | None = None) -> int:
         + (", ".join(artifact["models"]["models"]) if artifact["models"]["ok"] else "CAREFUL")
         + ("" if artifact["models"]["ok"] else f" ({artifact['models'].get('error')})")
     )
-    print(f"native tool calls: {'ok' if artifact['native']['ok'] else 'failed'}"
-          + (
-              ""
-              if artifact["native"]["ok"]
-              else f" ({artifact['native'].get('error') or 'no tool call returned'})"
-          ))
-    print(f"text fallback: {'ok' if artifact['text']['ok'] else 'failed'}"
-          + (
-              ""
-              if artifact["text"]["ok"]
-              else f" ({artifact['text'].get('error') or 'no tool call returned'})"
-          ))
+    print(
+        f"native tool calls: {'ok' if artifact['native']['ok'] else 'failed'}"
+        + (
+            ""
+            if artifact["native"]["ok"]
+            else f" ({artifact['native'].get('error') or 'no tool call returned'})"
+        )
+    )
+    print(
+        f"text fallback: {'ok' if artifact['text']['ok'] else 'failed'}"
+        + (
+            ""
+            if artifact["text"]["ok"]
+            else f" ({artifact['text'].get('error') or 'no tool call returned'})"
+        )
+    )
     print(f"selected transport: {artifact['selected_transport'] or 'NONE'}")
     print(f"wrote {output}")
     if args.env_out is not None and artifact["selected_transport"]:

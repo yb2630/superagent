@@ -69,9 +69,7 @@ def fit_tfidf_logistic(
         "max_features": 20000,
         "vocabulary_size": int(len(vectorizer.vocabulary_)),
         "train_rows": int(X_train.shape[0]),
-        "constant_labels": [
-            index for index, model in enumerate(models) if model is None
-        ],
+        "constant_labels": [index for index, model in enumerate(models) if model is None],
     }
 
 

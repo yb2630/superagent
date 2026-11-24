@@ -34,8 +34,9 @@ def test_detector_was_trained_on_exactly_the_500_train_tasks():
     assert metrics["data"]["split_counts"]["heldout"] == 300
     assert metrics["data"]["label_counts"]["error_behaviour"] == 63
     assert metrics["data"]["label_counts_all_kept"]["error_behaviour"] == 147
-    assert metrics["training"]["head"]["l2"] in (
-        metrics["training"]["deployed_l2_selection"]["candidates"]
+    assert (
+        metrics["training"]["head"]["l2"]
+        in (metrics["training"]["deployed_l2_selection"]["candidates"])
     )
 
 
@@ -89,11 +90,7 @@ def test_cv_predictions_include_oof_scores_for_the_500_train_tasks():
     assert len({row["task_key"] for row in rows}) == 500
     assert all(len(row["encoder"]) == 5 for row in rows)
     assert all(2 <= len(row["selected_categories"]) <= 3 for row in rows)
-    assert all(
-        category != "intent"
-        for row in rows
-        for category in row["selected_categories"]
-    )
+    assert all(category != "intent" for row in rows for category in row["selected_categories"])
 
 
 def test_manifest_states_the_heldout_split_is_untouched():

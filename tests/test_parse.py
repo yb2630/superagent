@@ -161,9 +161,7 @@ def test_humaneval_parse():
     task = parse_task("humanevalplus", HUMANEVAL_ROW)
     assert task.key == "humanevalplus/HumanEval/0"
     assert task.entry_point == "add_one"
-    assert task.fields["intent"] == (
-        "Add one to x, returning the result. Note: x may be negative."
-    )
+    assert task.fields["intent"] == ("Add one to x, returning the result. Note: x may be negative.")
     assert ">>> add_one(1)" in task.fields["examples"]
     assert task.fields["constraints"] == "- x may be negative."
     assert task.fields["signature_types"].startswith("from typing import List")
@@ -338,14 +336,9 @@ def test_mbpp_parse():
 def test_mbpp_inputs_only_visible_test_has_no_expected_results(tmp_path):
     task = parse_task("mbppplus", MBPP_ROW, visible_tests="inputs_only")
     assert task.visible_test == (
-        "from solution import double\n"
-        "print(double(1))\n"
-        "print(double(2))\n"
-        "print(double(3))\n"
+        "from solution import double\nprint(double(1))\nprint(double(2))\nprint(double(3))\n"
     )
-    assert task.visible_asserts == (
-        "print(double(1))\nprint(double(2))\nprint(double(3))"
-    )
+    assert task.visible_asserts == ("print(double(1))\nprint(double(2))\nprint(double(3))")
     assert "== 2" not in task.visible_test
 
     completed = _run_visible_test(tmp_path, task, "def double(x):\n    return x * 2\n")

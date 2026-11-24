@@ -86,9 +86,7 @@ def test_h3_answers_appear_and_discard_answers_are_withheld():
     assert "What constraints?" not in h3_text
 
     withheld = [dict(answers[0], answer=None)]
-    discard_text = json.dumps(
-        initial_messages(task, get_condition("DISCARD"), withheld=withheld)
-    )
+    discard_text = json.dumps(initial_messages(task, get_condition("DISCARD"), withheld=withheld))
     assert "What constraints?" in discard_text
     assert "Inputs are integers." not in discard_text
     assert "Code defensively" in discard_text

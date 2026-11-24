@@ -140,9 +140,7 @@ def parse_text_tool_calls(content: str) -> tuple[list[ToolCall], str]:
         arguments = payload.get("arguments")
         if arguments is None:
             arguments = {
-                key: value
-                for key, value in payload.items()
-                if key not in {"tool", "name"}
+                key: value for key, value in payload.items() if key not in {"tool", "name"}
             }
         if isinstance(arguments, str):
             try:
@@ -295,9 +293,7 @@ class LLMClient:
             kwargs["tool_choice"] = "auto"
         if self.config.enable_thinking is not None:
             kwargs["extra_body"] = {
-                "chat_template_kwargs": {
-                    "enable_thinking": bool(self.config.enable_thinking)
-                }
+                "chat_template_kwargs": {"enable_thinking": bool(self.config.enable_thinking)}
             }
         last_error: Exception | None = None
         for attempt in range(max(1, self.max_retries)):

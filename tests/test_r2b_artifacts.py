@@ -107,9 +107,7 @@ def test_r2b_summary_matches_the_unit_table():
 
 
 def test_r2b_units_reproduce_the_result_table():
-    rows = {
-        (row["condition"], row["sample_index"], row["task_key"]): row for row in _rows()
-    }
+    rows = {(row["condition"], row["sample_index"], row["task_key"]): row for row in _rows()}
     units = {}
     for path in (RUN / "units").rglob("*.json"):
         unit = json.loads(path.read_text(encoding="utf-8"))

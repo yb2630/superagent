@@ -78,15 +78,11 @@ def build_model_dict(
         "policy": {
             "name": "predicted_presence_x_utility",
             "utility": {label: UTILITY[label] for label in LABELS},
-            "utility_rationale": {
-                label: UTILITY_RATIONALE[label] for label in LABELS
-            },
+            "utility_rationale": {label: UTILITY_RATIONALE[label] for label in LABELS},
             "target_mean_questions": TARGET_MEAN_QUESTIONS,
             "question_count_range": list(QUESTION_COUNT_RANGE),
             "threshold_calibration": {
-                key: value
-                for key, value in threshold_calibration.items()
-                if key != "grid"
+                key: value for key, value in threshold_calibration.items() if key != "grid"
             },
         },
         "data": {
@@ -136,8 +132,10 @@ def train_detector(
     data = train_dataset(tasks_path, smoothing_path=smoothing_path)
     Y = np.asarray(data["labels"], dtype=np.float64)
     texts = data["texts"]
-    X = np.asarray(embeddings, dtype=np.float64) if embeddings is not None else np.asarray(
-        embed_cached(texts), dtype=np.float64
+    X = (
+        np.asarray(embeddings, dtype=np.float64)
+        if embeddings is not None
+        else np.asarray(embed_cached(texts), dtype=np.float64)
     )
     if X.shape != (len(texts), 1024):
         raise ValueError(f"embeddings have shape {X.shape}, expected ({len(texts)}, 1024)")
@@ -165,9 +163,7 @@ def train_detector(
     h3 = {
         "policy": policy_summary(Y, deployed_oof, threshold=threshold),
         "threshold_calibration": {
-            key: value
-            for key, value in threshold_calibration.items()
-            if key != "grid"
+            key: value for key, value in threshold_calibration.items() if key != "grid"
         },
         "deployed_style_oof": True,
         "selected_categories": {
@@ -175,9 +171,7 @@ def train_detector(
             "examples": [
                 {
                     "task_key": data["keys"][index],
-                    "categories": selected_questions(
-                        deployed_oof[index : index + 1], threshold
-                    )[0],
+                    "categories": selected_questions(deployed_oof[index : index + 1], threshold)[0],
                 }
                 for index in range(min(5, len(data["keys"])))
             ],
@@ -200,8 +194,7 @@ def train_detector(
             "label_counts_total_all_kept": int(sum(kept_label_counts(tasks_path).values())),
             "label_prevalence": data["label_prevalence"],
             "sources": {
-                source: data["sources"].count(source)
-                for source in sorted(set(data["sources"]))
+                source: data["sources"].count(source) for source in sorted(set(data["sources"]))
             },
             "heldout_tasks_used": 0,
             "smoothing": smoothing,
@@ -217,8 +210,9 @@ def train_detector(
             "seed": seed,
             "folds": folds,
             "l3": (
-                "Qwen3-8B smoothed wishes (R2 artifact)" if smoothing else
-                "raw first-sentence L3; R2 smoothing not applied"
+                "Qwen3-8B smoothed wishes (R2 artifact)"
+                if smoothing
+                else "raw first-sentence L3; R2 smoothing not applied"
             ),
             "smoothing": smoothing,
             "head": {
@@ -250,8 +244,9 @@ def train_detector(
         "epochs": HEAD_EPOCHS,
         "learning_rate": HEAD_LEARNING_RATE,
         "l3": (
-            "Qwen3-8B smoothed wishes (R2 artifact)" if smoothing else
-            "raw first-sentence L3; R2 smoothing not applied"
+            "Qwen3-8B smoothed wishes (R2 artifact)"
+            if smoothing
+            else "raw first-sentence L3; R2 smoothing not applied"
         ),
         "smoothing": smoothing,
     }
@@ -321,22 +316,13 @@ def _cv_rows(
                     label: int(data["labels"][index, label_index])
                     for label_index, label in enumerate(LABELS)
                 },
-                "prior": [
-                    round(float(value), 6) for value in cv_result["oof"]["prior"][index]
-                ],
-                "tfidf": [
-                    round(float(value), 6) for value in cv_result["oof"]["tfidf"][index]
-                ],
-                "encoder": [
-                    round(float(value), 6) for value in cv_result["oof"]["encoder"][index]
-                ],
+                "prior": [round(float(value), 6) for value in cv_result["oof"]["prior"][index]],
+                "tfidf": [round(float(value), 6) for value in cv_result["oof"]["tfidf"][index]],
+                "encoder": [round(float(value), 6) for value in cv_result["oof"]["encoder"][index]],
                 "encoder_raw": [
-                    round(float(value), 6)
-                    for value in cv_result["raw_oof"]["encoder"][index]
+                    round(float(value), 6) for value in cv_result["raw_oof"]["encoder"][index]
                 ],
-                "deployed_calibrated": [
-                    round(float(value), 6) for value in deployed_oof[index]
-                ],
+                "deployed_calibrated": [round(float(value), 6) for value in deployed_oof[index]],
                 "selected_categories": selected[index],
             }
         )

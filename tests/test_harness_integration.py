@@ -22,9 +22,7 @@ def _json_call(name: str, arguments: dict) -> str:
 def test_text_protocol_loop_writes_then_finishes():
     with FakeEndpoint(
         [
-            text_response(
-                _json_call("write_file", {"path": "solution.py", "content": SOLUTION})
-            ),
+            text_response(_json_call("write_file", {"path": "solution.py", "content": SOLUTION})),
             text_response(_json_call("run_visible_tests", {})),
             text_response(_json_call("finish", {})),
         ]
@@ -47,9 +45,7 @@ def test_text_protocol_h2_can_ask_the_stakeholder():
         [
             text_response(_json_call("ask_stakeholder", {"question": "What are the types?"})),
             text_response("Both inputs and the result are integers."),
-            text_response(
-                _json_call("write_file", {"path": "solution.py", "content": SOLUTION})
-            ),
+            text_response(_json_call("write_file", {"path": "solution.py", "content": SOLUTION})),
             text_response(_json_call("finish", {})),
         ]
     ) as endpoint:
@@ -68,9 +64,7 @@ def test_auto_fallback_loop_works_with_an_endpoint_that_ignores_tools():
     with FakeEndpoint(
         [
             text_response("I will write the implementation."),
-            text_response(
-                _json_call("write_file", {"path": "solution.py", "content": SOLUTION})
-            ),
+            text_response(_json_call("write_file", {"path": "solution.py", "content": SOLUTION})),
             native_response(tool_calls=[("run_visible_tests", {})]),
             text_response("Done."),
         ]

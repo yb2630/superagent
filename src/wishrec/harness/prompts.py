@@ -62,9 +62,7 @@ def dialogue_clause(condition: Condition) -> str:
 
 
 def system_prompt(condition: Condition) -> str:
-    return SYSTEM_TEMPLATE.format(
-        dialogue_clause=dialogue_clause(condition), turn_cap=TURN_CAP
-    )
+    return SYSTEM_TEMPLATE.format(dialogue_clause=dialogue_clause(condition), turn_cap=TURN_CAP)
 
 
 def spec_block(task, condition: Condition) -> str:

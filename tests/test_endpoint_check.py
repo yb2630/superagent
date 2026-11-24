@@ -121,6 +121,4 @@ def test_endpoint_check_cli_writes_artifact_and_env(tmp_path):
     assert code == 0
     artifact = json.loads((tmp_path / "endpoint.json").read_text(encoding="utf-8"))
     assert artifact["selected_transport"] == "native"
-    assert (tmp_path / "vllm.env").read_text(encoding="utf-8").count(
-        "VLLM_TOOL_MODE=native"
-    ) == 1
+    assert (tmp_path / "vllm.env").read_text(encoding="utf-8").count("VLLM_TOOL_MODE=native") == 1

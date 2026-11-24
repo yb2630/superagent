@@ -23,9 +23,7 @@ from .constants import (
 from .metrics import rank_categories, selection_summary
 
 
-def utility_scores(
-    probabilities: np.ndarray, label_names: tuple[str, ...] = LABELS
-) -> np.ndarray:
+def utility_scores(probabilities: np.ndarray, label_names: tuple[str, ...] = LABELS) -> np.ndarray:
     probabilities = np.asarray(probabilities, dtype=np.float64)
     weights = np.asarray([float(UTILITY[label]) for label in label_names], dtype=np.float64)
     return probabilities * weights
@@ -142,9 +140,7 @@ def policy_summary(
             "policy": "predicted_presence_x_utility",
             "threshold": cutoff,
             "utility": {label: UTILITY[label] for label in LABELS},
-            "utility_rationale": {
-                label: UTILITY_RATIONALE[label] for label in LABELS
-            },
+            "utility_rationale": {label: UTILITY_RATIONALE[label] for label in LABELS},
         }
     )
     if calibration is not None:

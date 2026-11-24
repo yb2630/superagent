@@ -1,0 +1,6 @@
+# Bulk mechanical commits that `git blame` should skip.
+# Enable locally with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (GitHub applies this file automatically.)
+
+# style: apply ruff format to src, tests and scripts
+e73f23e707b01ea916c488e1ab1e3f0cf822b4e9

@@ -38,9 +38,9 @@ from .config import (
 from .detector import (
     QuestionSelector,
     TrainedDetector,
+    default_model_path,
     load_default_detector,
     load_detector,
-    model_path,
 )
 from .llm import LLMClient
 from .loop import run_unit
@@ -127,7 +127,7 @@ DETECTOR_IDENTITY_FIELDS = (
 
 def detector_identity(detector_path: Path | None = None) -> dict:
     """Identify the detector artifact a run will use by its learned content."""
-    path = Path(detector_path) if detector_path is not None else model_path()
+    path = Path(detector_path) if detector_path is not None else default_model_path()
     identity: dict = {"path": str(path), "sha256": None, "present": path.is_file()}
     if not path.is_file():
         return identity

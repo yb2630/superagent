@@ -40,6 +40,16 @@ def model_path(run_id: str = "r1") -> Path:
     )
 
 
+def default_model_path() -> Path:
+    """Return the final detector used when no ``--detector`` path is given.
+
+    This is the detector refit on the smoothed train wishes (``make detector-smoothed``),
+    which the paper reports and the R2b pilot used; ``results/detector/`` holds the
+    earlier raw-label R1 artifact.
+    """
+    return RESULTS_DIR / "detector-smoothed" / "model.json"
+
+
 @dataclass(frozen=True)
 class CategoryScore:
     """A category and its (calibrated or utility-weighted) score."""
@@ -134,9 +144,11 @@ def load_detector(
     path: Path | None = None, *, encoder_fn: EncoderFn | None = None
 ) -> TrainedDetector:
     """Load a trained detector artifact, checking that it used the expected encoder."""
-    path = path or model_path()
+    path = path or default_model_path()
     if not path.exists():
-        raise FileNotFoundError(f"trained detector artifact missing at {path}; run `make detector`")
+        raise FileNotFoundError(
+            f"trained detector artifact missing at {path}; run `make detector-smoothed`"
+        )
     model = json.loads(path.read_text(encoding="utf-8"))
     if str(model.get("encoder", {}).get("model", ENCODER_NAME)) != ENCODER_NAME:
         raise ValueError(
@@ -151,6 +163,7 @@ __all__ = [
     "CategoryScore",
     "EncoderFn",
     "TrainedDetector",
+    "default_model_path",
     "load_detector",
     "model_path",
 ]

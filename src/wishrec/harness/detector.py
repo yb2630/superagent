@@ -21,6 +21,7 @@ from ..detector.trained import (
     CategoryQuestion,
     CategoryScore,
     TrainedDetector,
+    default_model_path,
     load_detector,
     model_path,
 )
@@ -76,6 +77,7 @@ __all__ = [
     "CategoryScore",
     "QuestionSelector",
     "TrainedDetector",
+    "default_model_path",
     "load_default_detector",
     "load_detector",
     "model_path",

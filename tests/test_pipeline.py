@@ -137,9 +137,10 @@ def test_shards_are_config_stable_and_resume_per_unit(tmp_path, monkeypatch):
         assert first["summary"]["complete"] is False
         assert first["manifest"]["status"] == "partial"
         assert len((tmp_path / "run" / "results.jsonl").read_text().splitlines()) == 23
-        len(endpoint.requests)
+        requests_after_first = len(endpoint.requests)
 
         second = runner.run_units(shard=1, shards=2, **kwargs)
+        assert len(endpoint.requests) > requests_after_first
         assert second["summary"]["units"] == 45
         assert second["summary"]["complete"] is True
         assert second["manifest"]["status"] == "complete"

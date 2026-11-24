@@ -108,6 +108,13 @@ def tool_schemas(*, allow_acceptance: bool = False, allow_ask: bool = False) -> 
     return schemas
 
 
+# Every tool any condition can expose; the text-protocol parser uses this to tell a
+# ``{"name": ...}`` tool call from an ordinary JSON object in the model's prose or code.
+TOOL_NAMES = frozenset(
+    schema["function"]["name"] for schema in tool_schemas(allow_acceptance=True, allow_ask=True)
+)
+
+
 @dataclass
 class ToolSession:
     """The tools of one task workspace, with the question budget and a call trace."""
@@ -247,6 +254,7 @@ __all__ = [
     "MAX_CONTENT_BYTES",
     "MAX_ERROR_OUTPUT",
     "MAX_TOOL_OUTPUT",
+    "TOOL_NAMES",
     "ToolSession",
     "tool_schemas",
 ]

@@ -5,6 +5,11 @@ workspace.  H3/DISCARD ask a detector-selected 2-3 questions before the loop sta
 lets the agent ask through ``ask_stakeholder`` within its five-question budget.  H3's
 answers are also used by one self-check-and-repair call.  The hidden evaluation runs only
 after the loop, in a fresh workspace containing solution.py and the hidden suite.
+
+Only an explicit finish ends the loop; any other turn without a tool call (prose, broken
+JSON, truncated output) gets corrective feedback and counts against the cap.  This rule
+post-dates the R2b pilot, so it changes ``harness_source_hash``: resuming a run directory
+created before it needs ``--force``.
 """
 
 from __future__ import annotations
@@ -35,16 +40,35 @@ from .prompts import (
     direct_messages,
     frontier_messages,
     initial_messages,
+    no_call_feedback,
     self_check_messages,
     stakeholder_messages,
 )
 from .stakeholder import Stakeholder
+from .tools import ToolSession, tool_schemas
 
 if TYPE_CHECKING:
     from .detector import QuestionSelector
     from .llm import ChatClient
     from .models import Task
-from .tools import ToolSession, tool_schemas
+
+
+def _no_call_reason(result: ChatResult) -> str | None:
+    """Why a turn without tool calls does not end the loop, or None if it is a finish.
+
+    Only an explicit finish ends the episode: ``{"tool": "finish"}`` under the text
+    transport, or an untruncated native reply (``finish_reason`` "stop", or unreported).
+    Truncated output, unparseable JSON and prose earn corrective feedback instead.
+    """
+    if result.transport == "text" and result.finished:
+        return None
+    if result.finish_reason == "length":
+        return "truncated"
+    if result.transport == "text":
+        return "json_error" if result.parse_error else "no_call"
+    if result.finish_reason in ("stop", ""):
+        return None
+    return "no_call"
 
 
 def _totals() -> dict:
@@ -244,7 +268,8 @@ def run_repl_unit(
 
         turns = 0
         turn_cap_hit = False
-        last_had_calls = False
+        finished = False
+        no_call: list[dict] = []
         while turns < TURN_CAP:
             try:
                 result = llm.chat(
@@ -270,9 +295,24 @@ def run_repl_unit(
             _accumulate(totals, result)
             calls.append(_call_record(result, "generator"))
             messages.append(_assistant_message(result))
-            last_had_calls = bool(result.tool_calls)
             if not result.tool_calls:
-                break
+                reason = _no_call_reason(result)
+                if reason is None:
+                    finished = True
+                    break
+                detail = result.parse_error[:300] if reason == "json_error" else ""
+                no_call.append({"turn": turns, "reason": reason, "detail": detail})
+                trace_events.append({"event": "no_call_feedback", "turn": turns, "reason": reason})
+                if turns < TURN_CAP:
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": no_call_feedback(
+                                reason, detail=detail, transport=result.transport
+                            ),
+                        }
+                    )
+                continue
             for tool_call in result.tool_calls:
                 output = session.execute(tool_call.name, tool_call.arguments)
                 messages.append(
@@ -282,7 +322,7 @@ def run_repl_unit(
                         "content": output,
                     }
                 )
-        if turns >= TURN_CAP and last_had_calls:
+        if turns >= TURN_CAP and not finished and not api_error:
             turn_cap_hit = True
             trace_events.append({"event": "turn_cap_hit", "turns": turns})
 
@@ -349,6 +389,7 @@ def run_repl_unit(
         "hidden_duration_s": evaluation["duration_s"],
         "turns": turns,
         "turn_cap_hit": turn_cap_hit,
+        "no_call_feedback": no_call,
         "questions": questions_asked,
         "detector_questions": detector_questions,
         "follow_up_questions": session_snapshot["questions"],

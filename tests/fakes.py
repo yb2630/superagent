@@ -198,6 +198,14 @@ def native_response(content: str = "", tool_calls=None, model: str = "fake") -> 
     }
 
 
+def error_response(status: int, message: str) -> dict:
+    """An OpenAI-style error body that FakeEndpoint returns with HTTP ``status``."""
+    return {
+        "__status__": status,
+        "error": {"message": message, "type": "BadRequestError", "code": status},
+    }
+
+
 def text_response(content: str, model: str = "fake") -> dict:
     return native_response(content=content, model=model)
 
@@ -235,8 +243,10 @@ class FakeEndpoint:
 
         class Handler(BaseHTTPRequestHandler):
             def _send_json(self, payload: dict) -> None:
+                payload = dict(payload)
+                status = int(payload.pop("__status__", 200))
                 body = json.dumps(payload).encode("utf-8")
-                self.send_response(200)
+                self.send_response(status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()

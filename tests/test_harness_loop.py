@@ -227,3 +227,110 @@ def test_bucket_classifies_assertion_failures():
     assert result["pass"] is False
     assert result["bucket"] == "AssertionError"
     assert "AssertionError" in result["hidden_output_tail"]
+
+
+# --- Loop termination: only an explicit finish ends the loop (review C1) -----------------
+
+
+def _text_client(endpoint):
+    from wishrec.harness.config import EndpointConfig
+    from wishrec.harness.llm import LLMClient
+
+    return LLMClient(EndpointConfig(base_url=endpoint.base_url, tool_mode="text"))
+
+
+def _write(content=SOLUTION):
+    from fakes import text_response
+
+    return text_response(
+        json.dumps({"tool": "write_file", "arguments": {"path": "solution.py", "content": content}})
+    )
+
+
+def _feedback_messages(result):
+    return [
+        message["content"]
+        for message in result["messages"]
+        if message.get("role") == "user" and "No tool call" in (message.get("content") or "")
+    ]
+
+
+def test_text_transport_malformed_json_gets_feedback_and_the_loop_continues():
+    from fakes import FakeEndpoint, text_response
+
+    broken = '{"tool": "write_file", "arguments": {"path": "solution.py" "content": "x"}}'
+    with FakeEndpoint(
+        [text_response(broken), _write(), text_response('{"tool": "finish"}')]
+    ) as endpoint:
+        result = run_repl_unit(make_task(), get_condition("H0"), _text_client(endpoint))
+    assert result["pass"] is True
+    assert result["solution_written"] is True
+    assert result["turns"] == 3
+    assert [item["reason"] for item in result["no_call_feedback"]] == ["json_error"]
+    feedback = _feedback_messages(result)
+    assert len(feedback) == 1
+    assert "Expecting ',' delimiter" in feedback[0]
+    assert '{"tool": "finish"}' in feedback[0]
+
+
+def test_prose_replies_get_feedback_until_the_turn_cap():
+    from fakes import FakeEndpoint, text_response
+
+    with FakeEndpoint(
+        handler=lambda request: text_response("Let's implement the function correctly.")
+    ) as endpoint:
+        result = run_repl_unit(make_task(), get_condition("H0"), _text_client(endpoint))
+    assert result["turns"] == 12
+    assert result["turn_cap_hit"] is True
+    assert result["bucket"] == "NoSolution"
+    assert len(result["no_call_feedback"]) == 12
+    assert {item["reason"] for item in result["no_call_feedback"]} == {"no_call"}
+
+
+def test_truncated_reply_gets_feedback_instead_of_ending_the_loop():
+    from wishrec.harness.llm import ChatResult
+
+    truncated = ChatResult(
+        content="def add(a, b):\n    return a +",
+        tool_calls=[],
+        model="fake",
+        usage={"input_tokens": 10, "output_tokens": 1600, "total_tokens": 1610},
+        transport="native",
+        finish_reason="length",
+    )
+    llm = FakeLLM(
+        [
+            truncated,
+            tool_result("write_file", {"path": "solution.py", "content": SOLUTION}),
+            text_result("done"),
+        ]
+    )
+    result = run_repl_unit(make_task(), get_condition("H0"), llm)
+    assert result["pass"] is True
+    assert result["turns"] == 3
+    assert [item["reason"] for item in result["no_call_feedback"]] == ["truncated"]
+    assert "token limit" in _feedback_messages(result)[0]
+
+
+def test_explicit_text_finish_ends_the_loop_immediately():
+    from fakes import FakeEndpoint, text_response
+
+    with FakeEndpoint([_write(), text_response('{"tool": "finish"}')]) as endpoint:
+        result = run_repl_unit(make_task(), get_condition("H0"), _text_client(endpoint))
+        assert len(endpoint.requests) == 2
+    assert result["turns"] == 2
+    assert result["turn_cap_hit"] is False
+    assert result["no_call_feedback"] == []
+
+
+def test_native_reply_without_tool_calls_still_ends_the_loop():
+    llm = FakeLLM(
+        [
+            tool_result("write_file", {"path": "solution.py", "content": SOLUTION}),
+            text_result("All done."),
+        ]
+    )
+    result = run_repl_unit(make_task(), get_condition("H0"), llm)
+    assert result["turns"] == 2
+    assert result["no_call_feedback"] == []
+    assert len(llm.calls) == 2

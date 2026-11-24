@@ -58,6 +58,28 @@ FRONTIER_SYSTEM = (
     "contents of solution.py in exactly one ```python code block and nothing else."
 )
 
+# Corrective feedback after a turn without a tool call that was not an explicit finish.
+# ``{reason}`` is one of the NO_CALL_REASONS texts below.
+NO_CALL_FEEDBACK_TEXT = (
+    "No tool call was found in your last reply: {reason}. Reply with exactly one JSON "
+    'object, for example {{"tool": "write_file", "arguments": {{"path": "solution.py", '
+    '"content": "<complete file>"}}}}. When you are finished, reply with '
+    '{{"tool": "finish"}}.'
+)
+
+NO_CALL_FEEDBACK_NATIVE = (
+    "No tool call was found in your last reply: {reason}. Call one of the tools to "
+    "continue, or reply without a tool call when you are finished."
+)
+
+NO_CALL_REASONS = {
+    "truncated": (
+        "it was cut off at the token limit before a complete tool call; keep the next reply shorter"
+    ),
+    "json_error": "the JSON could not be parsed ({detail})",
+    "no_call": "it contained no tool call",
+}
+
 SMOOTH_SYSTEM = (
     "Rewrite the following wish as one or two sentences that preserve the user's intent "
     "without adding requirements, signatures, examples, constraints or error behaviour. "
@@ -279,6 +301,12 @@ def self_check_messages(solution: str, answers: list[dict]) -> list[dict]:
     ]
 
 
+def no_call_feedback(reason: str, *, detail: str = "", transport: str = "native") -> str:
+    """Return the user message sent after a non-finishing turn without a tool call."""
+    template = NO_CALL_FEEDBACK_TEXT if transport == "text" else NO_CALL_FEEDBACK_NATIVE
+    return template.format(reason=NO_CALL_REASONS[reason].format(detail=detail))
+
+
 def smoothing_messages(wish: str) -> list[dict]:
     """One separate endpoint call used by the deferred L3 smoothing step."""
     return [
@@ -291,6 +319,9 @@ __all__ = [
     "DIRECT_SYSTEM",
     "FRONTIER_SYSTEM",
     "NOT_SPECIFIED",
+    "NO_CALL_FEEDBACK_NATIVE",
+    "NO_CALL_FEEDBACK_TEXT",
+    "NO_CALL_REASONS",
     "NO_DIALOGUE",
     "SELF_CHECK_SYSTEM",
     "SMOOTH_SYSTEM",
@@ -301,6 +332,7 @@ __all__ = [
     "direct_messages",
     "frontier_messages",
     "initial_messages",
+    "no_call_feedback",
     "self_check_messages",
     "sibling_block",
     "smoothing_messages",

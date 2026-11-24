@@ -12,6 +12,10 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    # Wait a week before proposing a new release, so yanked or compromised versions are
+    # usually caught upstream first.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     labels: [dependencies, python]
     commit-message:
@@ -30,6 +34,10 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    # Wait a week before proposing a new release, so yanked or compromised versions are
+    # usually caught upstream first.
+    cooldown:
+      default-days: 7
     labels: [dependencies, github-actions]
     commit-message:
       prefix: "ci(deps)"

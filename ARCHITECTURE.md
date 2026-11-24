@@ -68,6 +68,12 @@ L0 specification; `llm` is the OpenAI-compatible client with native and text too
 `prompts` keeps every prompt template in one place; `runner` is the resumable CLI;
 `report` and `bootstrap` aggregate results; `endpoint_check` probes an endpoint before a run.
 
+### `src/wishrec/analysis/` — offline analyses
+
+CPU-only analyses of committed artifacts that write `results/analysis/` (`make analysis`):
+`source_baseline` compares the detector with a source-only predictor on the same folds, and
+`nosolution_causes` classifies why pilot loop units ended without a solution.
+
 ## Design principles
 
 - **Determinism and provenance.** Every artifact records its inputs' hashes; splits and

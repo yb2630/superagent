@@ -60,6 +60,7 @@ target-version = "py312"
 src = ["src", "tests"]
 # Committed research artifacts are hash-checked by the tests; never touch them.
 extend-exclude = ["data", "results", "paper", "notebooks"]
+force-exclude = true
 
 [tool.ruff.lint]
 select = [
@@ -111,7 +112,6 @@ ignore = [
   "ANN",     # pytest functions and fixtures are not part of the typed API
   "ARG",     # fakes accept and ignore real signatures
   "D",       # test names are the documentation
-  "PLR2004", # literal expectations are the point of a test
   "S101",    # pytest uses assert
   "S108",    # tests use fixed temporary paths
 ]

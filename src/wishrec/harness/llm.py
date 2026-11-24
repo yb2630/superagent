@@ -16,10 +16,14 @@ from __future__ import annotations
 import json
 import re
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 from .config import EndpointConfig
+
+if TYPE_CHECKING:
+    from openai.types.chat import ChatCompletion
 
 try:  # pragma: no cover - import guard for detector-only environments
     import openai
@@ -29,6 +33,8 @@ except ImportError:  # pragma: no cover
 
 @dataclass
 class ToolCall:
+    """One tool invocation requested by the model; ``arguments`` is a JSON string."""
+
     id: str
     name: str
     arguments: str
@@ -36,6 +42,8 @@ class ToolCall:
 
 @dataclass
 class ChatResult:
+    """A parsed assistant turn: text, tool calls, token usage and the transport used."""
+
     content: str
     tool_calls: list[ToolCall]
     model: str
@@ -46,13 +54,16 @@ class ChatResult:
 
     @property
     def input_tokens(self) -> int:
+        """Prompt tokens reported by the endpoint."""
         return int(self.usage.get("input_tokens", 0) or 0)
 
     @property
     def output_tokens(self) -> int:
+        """Completion tokens reported by the endpoint."""
         return int(self.usage.get("output_tokens", 0) or 0)
 
     def as_usage(self) -> dict:
+        """Return the normalized input/output/total token counts."""
         return {
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
@@ -100,7 +111,8 @@ def _inject_text_protocol(messages: list[dict], tools: list[dict]) -> list[dict]
 _JSON_FENCE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
 
 
-def _candidate_objects(text: str):
+def _candidate_objects(text: str) -> Iterator[str]:
+    """Yield JSON-object candidates: fenced blocks, the whole text, then embedded objects."""
     for match in _JSON_FENCE.finditer(text or ""):
         yield match.group(1)
     stripped = (text or "").strip()
@@ -154,7 +166,7 @@ def parse_text_tool_calls(content: str) -> tuple[list[ToolCall], str]:
     return [], content
 
 
-def _usage_dict(usage: Any) -> dict:
+def _usage_dict(usage: object) -> dict:
     if usage is None:
         return {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
     input_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
@@ -165,6 +177,25 @@ def _usage_dict(usage: Any) -> dict:
         "output_tokens": output_tokens,
         "total_tokens": total,
     }
+
+
+class ChatClient(Protocol):
+    """The chat interface the loop needs; :class:`LLMClient` and test fakes satisfy it."""
+
+    def chat(
+        self,
+        messages: list[dict],
+        *,
+        tools: list[dict] | None = None,
+        purpose: str | None = None,
+        meta: dict | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        max_tokens: int | None = None,
+        seed: int | None = None,
+    ) -> ChatResult:
+        """Send one chat turn and return the parsed result."""
+        ...
 
 
 class LLMClient:
@@ -193,10 +224,11 @@ class LLMClient:
         self.purpose = purpose
         self.timeout = self.config.timeout if timeout is None else timeout
         self.max_retries = self.config.max_retries
-        self._client = None
+        self._client: openai.OpenAI | None = None
         self._transport: str | None = None
 
-    def _openai(self):
+    def _openai(self) -> openai.OpenAI:
+        """Return the lazily constructed OpenAI client for the configured endpoint."""
         if openai is None:  # pragma: no cover
             raise RuntimeError("the openai package is not installed")
         if self._client is None:
@@ -221,6 +253,11 @@ class LLMClient:
         max_tokens: int | None = None,
         seed: int | None = None,
     ) -> ChatResult:
+        """Send one chat turn, negotiating the native or text tool transport in auto mode.
+
+        Per-call sampling arguments override the client's defaults; ``purpose`` and
+        ``meta`` are accepted for interface parity with the fakes and ignored.
+        """
         del purpose, meta  # the caller records purpose in its trace
         transport = self._transport or self.config.tool_mode
         if transport == "text" and tools:
@@ -323,7 +360,8 @@ class LLMClient:
         return bool(status == 429 or (isinstance(status, int) and status >= 500))
 
     @staticmethod
-    def _parse(raw, transport: str) -> ChatResult:
+    def _parse(raw: ChatCompletion, transport: str) -> ChatResult:
+        """Convert a chat completion into a :class:`ChatResult`, parsing text tool calls."""
         choice = raw.choices[0]
         message = choice.message
         content = getattr(message, "content", None) or ""
@@ -354,6 +392,7 @@ class LLMClient:
 
 __all__ = [
     "TEXT_PROTOCOL",
+    "ChatClient",
     "ChatResult",
     "LLMClient",
     "ToolCall",

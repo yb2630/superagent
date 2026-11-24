@@ -7,26 +7,46 @@ never appear in a prompt.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .conditions import Condition
 from .config import QUESTION_BUDGET, TURN_CAP
 
+if TYPE_CHECKING:
+    from .models import Task
+
 NOT_SPECIFIED = "That is not specified."
 
-SYSTEM_TEMPLATE = """You are a coding agent working on one Python task. You cannot browse a repository or read files; the task workspace contains only the files described below. The evaluated file is solution.py, which starts as a stub.
-
-Use write_file to submit code. Use run_visible_tests to run the three visible tests against the current solution.py; use read_error to see the traceback of the last failed run. {dialogue_clause}
-
-Work in at most {turn_cap} assistant turns. When you are done, stop calling tools and reply with a one-line summary. Do not put the solution in the chat; write it with write_file."""
+SYSTEM_TEMPLATE = (
+    "You are a coding agent working on one Python task. You cannot browse a repository or "
+    "read files; the task workspace contains only the files described below. The "
+    "evaluated file is solution.py, which starts as a stub.\n\n"
+    "Use write_file to submit code. Use run_visible_tests to run the three visible tests "
+    "against the current solution.py; use read_error to see the traceback of the last "
+    "failed run. {dialogue_clause}\n\n"
+    "Work in at most {turn_cap} assistant turns. When you are done, stop calling tools "
+    "and reply with a one-line summary. Do not put the solution in the chat; write it "
+    "with write_file."
+)
 
 NO_DIALOGUE = "You cannot ask the stakeholder questions in this condition."
 
-STAKEHOLDER_SYSTEM = """You are the stakeholder who requested a Python function. You hold the complete specification below. Answer the developer's question using only this specification. If the specification does not contain the answer, reply exactly "That is not specified." Do not invent requirements, do not write code, and do not mention tests or hidden evaluation.
+STAKEHOLDER_SYSTEM = (
+    "You are the stakeholder who requested a Python function. You hold the complete "
+    "specification below. Answer the developer's question using only this specification. "
+    'If the specification does not contain the answer, reply exactly "That is not '
+    'specified." Do not invent requirements, do not write code, and do not mention tests '
+    "or hidden evaluation.\n\n"
+    "## Complete specification\n\n"
+    "{l0}"
+)
 
-## Complete specification
-
-{l0}"""
-
-SELF_CHECK_SYSTEM = """You are reviewing an implementation against stakeholder requirements. The current solution.py and the answers are below. If the implementation violates a requirement, call write_file with the complete corrected file. Otherwise reply "OK" and do not call a tool."""
+SELF_CHECK_SYSTEM = (
+    "You are reviewing an implementation against stakeholder requirements. The current "
+    "solution.py and the answers are below. If the implementation violates a "
+    "requirement, call write_file with the complete corrected file. Otherwise reply "
+    '"OK" and do not call a tool.'
+)
 
 DIRECT_SYSTEM = (
     "You implement one Python function. Reply with the complete contents of solution.py "
@@ -46,6 +66,7 @@ SMOOTH_SYSTEM = (
 
 
 def dialogue_clause(condition: Condition) -> str:
+    """Return the system-prompt sentence describing the condition's stakeholder access."""
     if condition.name == "H2":
         return (
             "You may call ask_stakeholder with one question at a time, up to "
@@ -62,16 +83,19 @@ def dialogue_clause(condition: Condition) -> str:
 
 
 def system_prompt(condition: Condition) -> str:
+    """Return the loop's system prompt for ``condition``."""
     return SYSTEM_TEMPLATE.format(dialogue_clause=dialogue_clause(condition), turn_cap=TURN_CAP)
 
 
-def spec_block(task, condition: Condition) -> str:
+def spec_block(task: Task, condition: Condition) -> str:
+    """Return the full L0 specification for B1, otherwise the L3 wish."""
     if condition.level == "L0":
         return f"## Specification (complete)\n\n{task.levels['L0']}"
     return f"## Wish\n\n{task.levels['L3']}"
 
 
-def visible_block(task) -> str:
+def visible_block(task: Task) -> str:
+    """Return the visible-test section shown to the generator."""
     body = (task.visible_test or task.visible_asserts).strip()
     return (
         "## Visible tests\n\nThese are the three tests the stakeholder remembers. "
@@ -81,9 +105,9 @@ def visible_block(task) -> str:
 
 
 def answers_block(answers: list[dict], unanswered: list[str]) -> str:
+    """Format stakeholder answers as requirements, listing unanswered categories."""
     lines = ["## Requirements (from stakeholder answers)"]
-    for item in answers:
-        lines.append(f"- **{item['category']}**: {item['answer']}")
+    lines.extend(f"- **{item['category']}**: {item['answer']}" for item in answers)
     if unanswered:
         lines.append("")
         lines.append("## Categories with no answer")
@@ -97,6 +121,7 @@ def answers_block(answers: list[dict], unanswered: list[str]) -> str:
 
 
 def withheld_block(questions: list[dict]) -> str:
+    """List the questions whose answers DISCARD withholds."""
     lines = [
         "## Questions asked to the stakeholder",
         "",
@@ -106,12 +131,12 @@ def withheld_block(questions: list[dict]) -> str:
         ),
         "",
     ]
-    for item in questions:
-        lines.append(f"- **{item['category']}**: {item['question']}")
+    lines.extend(f"- **{item['category']}**: {item['question']}" for item in questions)
     return "\n".join(lines)
 
 
 def sibling_block(siblings: list[dict]) -> str:
+    """Format H4's sibling functions (truncated code and doctests) as context."""
     lines = [
         "## Nearby functions in the codebase (context, not your task)",
         "",
@@ -129,6 +154,7 @@ def sibling_block(siblings: list[dict]) -> str:
 
 
 def condition_instruction(condition: Condition) -> str:
+    """Return the closing instruction of the user prompt for ``condition``."""
     if condition.name == "H1":
         return (
             "Before implementing, write your acceptance tests to `acceptance_tests.py` "
@@ -156,7 +182,7 @@ def condition_instruction(condition: Condition) -> str:
 
 
 def initial_messages(
-    task,
+    task: Task,
     condition: Condition,
     *,
     answers: list[dict] | None = None,
@@ -164,6 +190,7 @@ def initial_messages(
     withheld: list[dict] | None = None,
     siblings: list[dict] | None = None,
 ) -> list[dict]:
+    """Build the system and first user message of a loop condition."""
     parts = ["## Task", "", spec_block(task, condition)]
     if condition.name in ("H3", "DISCARD"):
         if answers is not None:
@@ -190,7 +217,8 @@ def initial_messages(
     ]
 
 
-def direct_messages(task, *, include_visible: bool) -> list[dict]:
+def direct_messages(task: Task, *, include_visible: bool) -> list[dict]:
+    """Build the single-shot messages for B2's direct samples."""
     parts = [
         "## Wish",
         "",
@@ -210,7 +238,7 @@ def direct_messages(task, *, include_visible: bool) -> list[dict]:
     ]
 
 
-def frontier_messages(task) -> list[dict]:
+def frontier_messages(task: Task) -> list[dict]:
     """B3 sees only the wish and the stub, with no visible tests or questions."""
     parts = [
         "## Wish",
@@ -230,6 +258,7 @@ def frontier_messages(task) -> list[dict]:
 
 
 def stakeholder_messages(l0_spec: str, question: str) -> list[dict]:
+    """Build the stakeholder call: the L0 specification as context, one question."""
     return [
         {"role": "system", "content": STAKEHOLDER_SYSTEM.format(l0=l0_spec)},
         {"role": "user", "content": question},
@@ -237,6 +266,7 @@ def stakeholder_messages(l0_spec: str, question: str) -> list[dict]:
 
 
 def self_check_messages(solution: str, answers: list[dict]) -> list[dict]:
+    """Build the review call that checks a solution against the stakeholder answers."""
     requirements = answers_block(answers, [])
     user = (
         f"{requirements}\n\n## Current solution.py\n\n```python\n{solution.strip()}\n```\n\n"

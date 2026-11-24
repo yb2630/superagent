@@ -21,6 +21,7 @@ import json
 import os
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -40,7 +41,7 @@ from .config import (
     utc_now_iso,
 )
 from .llm import LLMClient
-from .models import load_tasks
+from .models import Task, load_tasks
 from .prompts import SMOOTH_SYSTEM
 from .wish import smooth_wish
 
@@ -56,8 +57,8 @@ def _read_existing(path: Path) -> dict[str, dict]:
     records: dict[str, dict] = {}
     if not path.is_file():
         return records
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:
@@ -69,7 +70,8 @@ def _read_existing(path: Path) -> dict[str, dict]:
     return records
 
 
-def _smooth_one(task, llm: LLMClient) -> dict:
+def _smooth_one(task: Task, llm: LLMClient) -> dict:
+    """Smooth one task's wish and return its artifact record."""
     started = time.monotonic()
     raw = str(task.wish).strip()
     smoothed = smooth_wish(
@@ -94,13 +96,13 @@ def _smooth_one(task, llm: LLMClient) -> dict:
 
 
 def smooth_tasks(
-    tasks: list,
+    tasks: list[Task],
     llm: LLMClient,
     output_dir: Path,
     *,
     workers: int = 1,
     force: bool = False,
-    progress=print,
+    progress: Callable[[str], object] = print,
 ) -> SmoothingArtifact:
     """Smooth ``tasks`` into ``output_dir/wishes.jsonl``; resume from existing records."""
     output_dir = Path(output_dir)
@@ -118,7 +120,7 @@ def smooth_tasks(
 
     with artifact_path.open("a", encoding="utf-8") as handle:
 
-        def job(task):
+        def job(task: Task) -> dict:
             record = _smooth_one(task, llm)
             line = json.dumps(record, sort_keys=True, ensure_ascii=False) + "\n"
             with lock:
@@ -215,7 +217,8 @@ def _select_tasks(
     *,
     tasks_path: Path | None = None,
     limit: int | None = None,
-) -> list:
+) -> list[Task]:
+    """Load the record-only tasks of the requested splits; ``heldout`` is refused."""
     if "heldout" in splits:
         raise SystemExit("refusing to smooth the held-out split; that split belongs to R3")
     unknown = sorted(set(splits) - set(SMOOTHING_SPLITS))
@@ -223,7 +226,7 @@ def _select_tasks(
         raise SystemExit(
             f"unknown smoothing split(s) {unknown}; choose from {list(SMOOTHING_SPLITS)}"
         )
-    tasks = []
+    tasks: list[Task] = []
     for split in splits:
         tasks.extend(load_tasks(split=split, tasks_path=tasks_path, require_derived=False))
     tasks.sort(key=lambda task: task.key)
@@ -235,6 +238,7 @@ def _select_tasks(
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Smooth the selected splits' wishes against the configured endpoint (CLI entry)."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-id", required=True)
     parser.add_argument(

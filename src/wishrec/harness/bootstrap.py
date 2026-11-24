@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -264,7 +265,7 @@ def build_bootstrap(
     sample_values = sorted(
         {count for per_task in sample_counts.values() for count in per_task.values()}
     )
-    summary = {
+    summary: dict[str, Any] = {
         "format_version": 1,
         "generated_at": utc_now_iso(),
         "results": str(results_path),
@@ -381,6 +382,7 @@ def render_markdown(summary: dict) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Bootstrap the pilot results and write the JSON and Markdown summaries (CLI entry)."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("results", type=Path, help="results.jsonl from the R2b pilot")
     parser.add_argument(

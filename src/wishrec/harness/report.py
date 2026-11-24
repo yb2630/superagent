@@ -36,6 +36,7 @@ CATEGORY_ATTRIBUTION = (
 
 
 def load_tasks(tasks_path: Path | None = None) -> dict[str, dict]:
+    """Return the committed level records keyed by task key."""
     records = read_jsonl(tasks_path or (LEVELS_DIR / "tasks.jsonl"))
     return {str(record["key"]): record for record in records}
 
@@ -49,6 +50,7 @@ def _unit_key(unit: dict) -> tuple[str, str, int]:
 
 
 def load_runs(run_dirs: list[Path]) -> tuple[dict[tuple[str, str, int], dict], list[dict]]:
+    """Collect completed units (first occurrence wins) and each run's config."""
     units: dict[tuple[str, str, int], dict] = {}
     configs: list[dict] = []
     for run_dir in run_dirs:
@@ -77,10 +79,11 @@ def _union_config(configs: list[dict]) -> dict:
     for other in task_lists[1:]:
         if set(other) != set(base_tasks):
             raise ValueError("run directories disagree on the task set")
-    conditions: list[str] = []
-    for name in CONDITION_ORDER:
-        if any(name in (config.get("conditions") or []) for config in configs):
-            conditions.append(name)
+    conditions: list[str] = [
+        name
+        for name in CONDITION_ORDER
+        if any(name in (config.get("conditions") or []) for config in configs)
+    ]
     for config in configs:
         for name in config.get("conditions") or []:
             if name not in conditions:
@@ -143,6 +146,10 @@ def _recovery(pass_at_1: float | None, baseline: dict) -> float | None:
 
 
 def build_report(run_dirs: list[Path], *, tasks_path: Path | None = None) -> dict:
+    """Summarise one or more run directories into pass rates, recovery, cost and time.
+
+    Held-out or unknown task units are counted and reported rather than silently dropped.
+    """
     units, configs = load_runs([Path(path) for path in run_dirs])
     config = _union_config(configs)
     task_keys = set(config["task_keys"])
@@ -176,16 +183,20 @@ def build_report(run_dirs: list[Path], *, tasks_path: Path | None = None) -> dic
         subset = {
             key for key in task_keys if bool(tasks[key].get("field_presence", {}).get(category))
         }
-        item = {"label": FIELD_LABELS[category], "tasks": len(subset), "conditions": {}}
+        category_conditions: dict[str, dict] = {}
         for condition in conditions:
-            item["conditions"][condition] = _summarise_condition(
+            category_conditions[condition] = _summarise_condition(
                 [unit for unit in units.values() if unit.get("condition") == condition],
                 subset,
             )
-            item["conditions"][condition]["recovery"] = _recovery(
-                item["conditions"][condition]["pass_at_1"], item["conditions"]
+            category_conditions[condition]["recovery"] = _recovery(
+                category_conditions[condition]["pass_at_1"], category_conditions
             )
-        by_category[category] = item
+        by_category[category] = {
+            "label": FIELD_LABELS[category],
+            "tasks": len(subset),
+            "conditions": category_conditions,
+        }
 
     manifests = []
     wall_clock = 0.0
@@ -281,13 +292,14 @@ def build_report(run_dirs: list[Path], *, tasks_path: Path | None = None) -> dic
     return summary
 
 
-def _fmt(value, digits: int = 3) -> str:
+def _fmt(value: float | None, digits: int = 3) -> str:
     if value is None:
         return "n/a"
     return f"{float(value):.{digits}f}"
 
 
 def render_report(summary: dict) -> str:
+    """Render a :func:`build_report` summary as the Markdown pilot report."""
     lines = [
         "# R2 GPU pilot report",
         "",
@@ -372,6 +384,7 @@ def render_report(summary: dict) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Build the report for the given run directories and write it (CLI entry)."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("runs", nargs="+", type=Path, help="run directory or directories")
     parser.add_argument("--output", type=Path, default=None)

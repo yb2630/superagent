@@ -57,14 +57,17 @@ TOOL_MODES = ("auto", "native", "text")
 
 
 def utc_now_iso() -> str:
+    """Return the current UTC time as an ISO-8601 string with whole seconds."""
     return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def sha256_text(text: str) -> str:
+    """Return the hex SHA-256 of ``text`` encoded as UTF-8."""
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def sha256_file(path: Path) -> str:
+    """Return the hex SHA-256 of a file, read in 1 MiB chunks."""
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -73,6 +76,8 @@ def sha256_file(path: Path) -> str:
 
 
 def git_info() -> dict:
+    """Return the repository commit, branch and dirty flag (``unknown`` outside git)."""
+
     def _git(*args: str) -> str:
         try:
             return subprocess.check_output(
@@ -90,6 +95,7 @@ def git_info() -> dict:
 
 
 def environment_info() -> dict:
+    """Return the Python version and platform details recorded in run manifests."""
     return {
         "python": sys.version.split()[0],
         "platform": platform.platform(),
@@ -99,6 +105,7 @@ def environment_info() -> dict:
 
 
 def atomic_write_text(path: Path, text: str) -> None:
+    """Write ``text`` via a ``.part`` file and rename, so readers never see a partial file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".part")
     temporary.write_text(text, encoding="utf-8")
@@ -106,16 +113,19 @@ def atomic_write_text(path: Path, text: str) -> None:
 
 
 def atomic_write_json(path: Path, data: dict) -> None:
+    """Atomically write ``data`` as indented, key-sorted JSON."""
     atomic_write_text(path, json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
 
 
 def write_jsonl(path: Path, records: list[dict]) -> None:
+    """Atomically write one key-sorted JSON object per line."""
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [json.dumps(record, sort_keys=True, ensure_ascii=False) for record in records]
     atomic_write_text(path, "\n".join(lines) + ("\n" if lines else ""))
 
 
 def read_jsonl(path: Path) -> list[dict]:
+    """Read a JSON-lines file, skipping blank lines."""
     return [
         json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
     ]
@@ -203,11 +213,12 @@ def _truthy(value: str) -> bool:
 
 
 def generator_config(environ: dict[str, str] | None = None) -> EndpointConfig:
+    """Return the generator endpoint configured by the ``VLLM_*`` variables."""
     return EndpointConfig.from_env(prefix="VLLM", environ=environ)
 
 
 def frontier_config(environ: dict[str, str] | None = None) -> EndpointConfig:
-    """B3 endpoint.
+    """Return the B3 endpoint configured by ``VLLM_FRONTIER_*``, else the generator's.
 
     The milestone uses a frontier baseline when the operator supplies one.  With the $0
     budget and no other endpoint, B3 reuses the same Qwen3-8B endpoint at temperature 0.7,
@@ -218,6 +229,7 @@ def frontier_config(environ: dict[str, str] | None = None) -> EndpointConfig:
 
 
 def harness_source_hash() -> str:
+    """Hash the harness and detector sources so a run records the exact code it used."""
     digest = hashlib.sha256()
     for directory in (
         Path(__file__).resolve().parent,

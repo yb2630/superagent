@@ -8,10 +8,16 @@ the R1 artifact.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .prompts import smoothing_messages
 
+if TYPE_CHECKING:
+    from .llm import ChatClient
 
-def smooth_wish(llm, wish: str, *, meta: dict | None = None) -> str:
+
+def smooth_wish(llm: ChatClient, wish: str, *, meta: dict | None = None) -> str:
+    """Rewrite a wish with one deterministic call; an empty reply keeps the original."""
     wish = str(wish).strip()
     if not wish:
         raise ValueError("cannot smooth an empty wish")

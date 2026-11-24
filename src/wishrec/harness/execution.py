@@ -58,6 +58,32 @@ def scrubbed_env(workspace: Path) -> dict[str, str]:
     }
 
 
+# After SIGKILL, how long to keep reading output.  A grandchild that called setsid()
+# escapes killpg and can hold the pipes open indefinitely, so the read must be bounded.
+KILL_GRACE_S = 2.0
+
+
+def _as_text(value: str | bytes | None) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value or ""
+
+
+def _drain_after_kill(process: subprocess.Popen[str]) -> tuple[str, str]:
+    """Collect a killed process's output without waiting on escaped descendants."""
+    try:
+        stdout, stderr = process.communicate(timeout=KILL_GRACE_S)
+        return stdout or "", stderr or ""
+    except subprocess.TimeoutExpired as exc:
+        # Keep what arrived, close our pipe ends and reap the (already killed) child.
+        stdout, stderr = _as_text(exc.stdout), _as_text(exc.stderr)
+    for stream in (process.stdout, process.stderr):
+        if stream is not None:
+            stream.close()
+    process.wait(timeout=KILL_GRACE_S)
+    return stdout, stderr
+
+
 def _run(args: list[str], cwd: Path, timeout: float) -> RunResult:
     started = time.monotonic()
     process = subprocess.Popen(
@@ -78,7 +104,7 @@ def _run(args: list[str], cwd: Path, timeout: float) -> RunResult:
             os.killpg(process.pid, signal.SIGKILL)
         except (ProcessLookupError, PermissionError):
             process.kill()
-        stdout, stderr = process.communicate()
+        stdout, stderr = _drain_after_kill(process)
     return RunResult(
         returncode=124 if timed_out else int(process.returncode),
         stdout=stdout or "",
@@ -116,7 +142,10 @@ def run_hidden_suite(source: str, workspace: Path, timeout: float = HIDDEN_TIMEO
 
 
 def classify_exception(result: RunResult) -> str:
-    """Name the last exception in stderr, or ``Timeout``/``NonZeroExit``/``None``."""
+    """Return ``Timeout`` for a timed-out run, else the last exception named in stderr.
+
+    Without a named exception, a non-zero exit is ``NonZeroExit`` and success is ``None``.
+    """
     if result.timed_out:
         return "Timeout"
     lines = [line.strip() for line in result.stderr.splitlines() if line.strip()]

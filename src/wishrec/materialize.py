@@ -18,11 +18,12 @@ import argparse
 import json
 import shutil
 from pathlib import Path
+from typing import Any
 
 from .artifacts import _safe_task_id, sha256_text, write_derived_task
 from .config import DEFAULT_VISIBLE_TESTS, DERIVED_DIR, LEVELS_DIR, VISIBLE_TEST_MODES
 from .datasets import download_sources, load_raw_rows
-from .parse import parse_task
+from .parse import ParsedTask, parse_task
 
 HASH_FIELDS = {
     "hidden_test_sha256": "hidden_test",
@@ -32,7 +33,8 @@ HASH_FIELDS = {
 }
 
 
-def read_records(tasks_path: Path | None = None) -> list[dict]:
+def read_records(tasks_path: Path | None = None) -> list[dict[str, Any]]:
+    """Load the committed level records, failing loudly on invalid or empty files."""
     path = tasks_path or (LEVELS_DIR / "tasks.jsonl")
     records = []
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
@@ -47,7 +49,8 @@ def read_records(tasks_path: Path | None = None) -> list[dict]:
     return records
 
 
-def derived_path(record: dict, derived_dir: Path | None = None) -> Path:
+def derived_path(record: dict[str, Any], derived_dir: Path | None = None) -> Path:
+    """Return the expected derived ``hidden_test.py`` path for a committed record."""
     root = derived_dir or DERIVED_DIR
     return root / record["source"] / _safe_task_id(record["source_task_id"]) / "hidden_test.py"
 
@@ -69,22 +72,23 @@ def materialize(
     if download:
         download_sources()
     rows = load_raw_rows()
-    parsed = {}
-    parse_failures = []
+    parsed: dict[str, ParsedTask] = {}
+    parse_failures: list[dict[str, str]] = []
     for source, source_rows in rows.items():
         for row in source_rows:
             try:
-                task = parse_task(source, row, visible_tests=visible_tests)
+                candidate = parse_task(source, row, visible_tests=visible_tests)
             except Exception as exc:  # noqa: BLE001 - record, do not abort the whole build
                 parse_failures.append({"source": source, "error": str(exc)})
                 continue
-            parsed[task.key] = task
+            parsed[candidate.key] = candidate
 
     root = derived_dir or DERIVED_DIR
     if clean and root.exists():
         shutil.rmtree(root)
 
-    missing, mismatched = [], []
+    missing: list[str] = []
+    mismatched: list[dict[str, str]] = []
     written = 0
     for record in records:
         task = parsed.get(record["key"])
@@ -125,6 +129,7 @@ def materialize(
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Check or rebuild the derived files from the CLI; return 0 when everything matches."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tasks", type=Path, default=LEVELS_DIR / "tasks.jsonl")
     parser.add_argument("--derived", type=Path, default=None, help="override data/derived/levels")

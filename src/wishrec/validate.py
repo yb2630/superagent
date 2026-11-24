@@ -8,6 +8,8 @@ tasks whose inputs or environment changed.
 
 from __future__ import annotations
 
+import contextlib
+import functools
 import hashlib
 import importlib.metadata
 import json
@@ -22,8 +24,12 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from .config import CACHE_DIR, VALIDATOR_VERSION
+
+if TYPE_CHECKING:
+    from .parse import ParsedTask
 
 _PACKAGES = (
     "numpy",
@@ -88,25 +94,26 @@ def _package_versions() -> dict[str, str]:
     return versions
 
 
-_FINGERPRINT: str | None = None
-
-
+@functools.cache
 def environment_fingerprint() -> str:
-    global _FINGERPRINT
-    if _FINGERPRINT is None:
-        payload = {
-            "validator_version": VALIDATOR_VERSION,
-            "python": sys.version.split()[0],
-            "implementation": platform.python_implementation(),
-            "platform": platform.platform(),
-            "machine": platform.machine(),
-            "packages": _package_versions(),
-        }
-        _FINGERPRINT = _sha256(json.dumps(payload, sort_keys=True))
-    return _FINGERPRINT
+    """Return a SHA-256 of the interpreter, platform and validation package versions.
+
+    Computed once per process; it keys the validation cache so a changed environment
+    revalidates every task.
+    """
+    payload = {
+        "validator_version": VALIDATOR_VERSION,
+        "python": sys.version.split()[0],
+        "implementation": platform.python_implementation(),
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "packages": _package_versions(),
+    }
+    return _sha256(json.dumps(payload, sort_keys=True))
 
 
-def environment_info() -> dict:
+def environment_info() -> dict[str, Any]:
+    """Describe the validation environment for the committed manifest."""
     return {
         "python": sys.version.split()[0],
         "implementation": platform.python_implementation(),
@@ -121,6 +128,8 @@ def environment_info() -> dict:
 
 @dataclass
 class ValidationResult:
+    """Outcome of validating one canonical solution; ``stage`` names the failing step."""
+
     ok: bool
     stage: str = "ok"
     exception: str = ""
@@ -130,7 +139,8 @@ class ValidationResult:
     hidden_seconds: float = 0.0
     cached: bool = False
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
+        """Return the cacheable fields (everything except the transient ``cached`` flag)."""
         data = asdict(self)
         data.pop("cached", None)
         return data
@@ -178,10 +188,8 @@ def _run(args: list[str], cwd: Path, timeout: float) -> tuple[bool, str, str, fl
         stdout, stderr = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
         timed_out = True
-        try:
+        with contextlib.suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
         stdout, stderr = process.communicate()
     duration = time.monotonic() - started
     combined = (stdout or "") + "\n" + (stderr or "")
@@ -193,7 +201,7 @@ def _cache_path(cache_key: str) -> Path:
     return CACHE_DIR / "validation" / f"{cache_key}.json"
 
 
-def _cache_key(task) -> str:
+def _cache_key(task: ParsedTask) -> str:
     payload = {
         "key": task.key,
         "validator": VALIDATOR_VERSION,
@@ -205,13 +213,13 @@ def _cache_key(task) -> str:
     return _sha256(json.dumps(payload, sort_keys=True))
 
 
-def _write_task(task, workspace: Path) -> None:
+def _write_task(task: ParsedTask, workspace: Path) -> None:
     (workspace / "solution.py").write_text(task.canonical_solution, encoding="utf-8")
     (workspace / "visible_test.py").write_text(task.visible_test, encoding="utf-8")
     (workspace / "hidden_test.py").write_text(task.hidden_test, encoding="utf-8")
 
 
-def _run_visible(task, workspace: Path, timeout: float):
+def _run_visible(task: ParsedTask, workspace: Path, timeout: float) -> tuple[bool, str, str, float]:
     if task.source == "bigcodebench":
         args = [sys.executable, "-m", "unittest", "visible_test"]
     else:
@@ -219,7 +227,7 @@ def _run_visible(task, workspace: Path, timeout: float):
     return _run(args, workspace, timeout)
 
 
-def _run_hidden(task, workspace: Path, timeout: float):
+def _run_hidden(task: ParsedTask, workspace: Path, timeout: float) -> tuple[bool, str, str, float]:
     if task.source == "bigcodebench":
         args = [sys.executable, "-m", "unittest", "hidden_test"]
     else:
@@ -228,13 +236,18 @@ def _run_hidden(task, workspace: Path, timeout: float):
 
 
 def validate_task(
-    task,
+    task: ParsedTask,
     *,
     visible_timeout: float = 60.0,
     hidden_timeout: float = 180.0,
     use_cache: bool = True,
     force: bool = False,
 ) -> ValidationResult:
+    """Run the canonical solution against the visible, then hidden, tests in a temp dir.
+
+    A cached result is reused unless ``use_cache`` is false or ``force`` is set; every fresh
+    result is written back to the cache.
+    """
     cache_key = _cache_key(task)
     cache_file = _cache_path(cache_key)
     if use_cache and not force and cache_file.exists():
@@ -299,7 +312,7 @@ def _store(cache_file: Path, result: ValidationResult) -> None:
 
 
 def validate_all(
-    tasks: list,
+    tasks: list[ParsedTask],
     *,
     workers: int = 6,
     force: bool = False,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .config import FIELD_KEYS, FIELD_LABELS, LEVELS
 
 L1_DELETIONS = ["examples", "signature_types.annotations"]
@@ -160,13 +162,15 @@ def level_labels(fields: dict[str, str], level: str) -> dict[str, int]:
 
 
 def l2_c_labels(fields: dict[str, str], category: str) -> dict[str, int]:
+    """Detector labels for the L2_c variant: one-hot on ``category`` when it is present."""
     if category not in FIELD_KEYS:
         raise ValueError(category)
     presence = {name: bool(fields.get(name, "").strip()) for name in FIELD_KEYS}
     return {name: int(presence[name] and name == category) for name in FIELD_KEYS}
 
 
-def level_char_lengths(built: dict) -> dict[str, int]:
+def level_char_lengths(built: dict[str, Any]) -> dict[str, int]:
+    """Return the character length of each rendered level in a ``build_levels`` result."""
     return {level: len(text) for level, text in built["levels"].items()}
 
 

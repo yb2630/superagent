@@ -22,6 +22,7 @@ import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from .config import RESULTS_DIR
 
@@ -36,6 +37,7 @@ def default_smoothing_dir(run_id: str) -> Path:
 
 
 def default_smoothing_path(run_id: str) -> Path:
+    """``results/runs/<run_id>/smoothing/wishes.jsonl``."""
     return default_smoothing_dir(run_id) / ARTIFACT_NAME
 
 
@@ -88,11 +90,15 @@ class SmoothingArtifact:
 
     @property
     def model(self) -> str:
-        endpoint = self.manifest.get("endpoint") or {}
+        """Return the generator model named in the manifest, or ``""`` when unrecorded."""
+        endpoint = self.manifest.get("endpoint")
+        if not isinstance(endpoint, Mapping):
+            return ""
         return str(endpoint.get("model", "") or "")
 
     @property
     def splits(self) -> dict[str, int]:
+        """Return the record count per split, sorted by split name."""
         counts: dict[str, int] = {}
         for record in self.records.values():
             split = str(record.get("split", ""))
@@ -101,9 +107,10 @@ class SmoothingArtifact:
 
     @property
     def fallbacks(self) -> int:
+        """Return how many records fell back to the raw wish."""
         return sum(1 for record in self.records.values() if record.get("fallback"))
 
-    def identity(self) -> dict:
+    def identity(self) -> dict[str, Any]:
         """Stable identity for a run manifest (no timestamps, no absolute paths)."""
         return {
             "artifact": ARTIFACT_NAME,
@@ -115,6 +122,7 @@ class SmoothingArtifact:
         }
 
     def wish(self, task_key: str) -> str:
+        """Return the smoothed wish for ``task_key``; raise ``KeyError`` when absent."""
         try:
             record = self.records[task_key]
         except KeyError as exc:
@@ -122,6 +130,7 @@ class SmoothingArtifact:
         return str(record["smoothed_wish"])
 
     def missing(self, keys: Iterable[str]) -> list[str]:
+        """Return the sorted keys that the artifact does not cover."""
         return sorted(str(key) for key in keys if str(key) not in self.records)
 
     def apply_to_records(self, records: Sequence[dict], *, require_all: bool = True) -> int:
@@ -160,6 +169,7 @@ class SmoothingArtifact:
         return changed
 
     def texts_for(self, records: Sequence[dict]) -> list[str]:
+        """Return the smoothed wish for each record, in order."""
         return [self.wish(str(record["key"])) for record in records]
 
 

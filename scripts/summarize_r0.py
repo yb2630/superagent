@@ -10,6 +10,7 @@ RESULTS = ROOT / "results" / "levels"
 
 
 def main() -> None:
+    """Print split, source and field-presence summaries of results/levels/."""
     tasks = [
         json.loads(line)
         for line in (RESULTS / "tasks.jsonl").read_text().splitlines()

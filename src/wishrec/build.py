@@ -17,6 +17,7 @@ import time
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 from .artifacts import (
@@ -56,10 +57,13 @@ from .validate import environment_info, validate_all
 
 
 def utc_now() -> str:
+    """Return the current UTC time as an ISO-8601 string with second precision."""
     return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
-def git_info() -> dict:
+def git_info() -> dict[str, Any]:
+    """Return the current commit, branch and dirty flag; empty values outside a git repo."""
+
     def _git(*args: str) -> str:
         try:
             return subprocess.check_output(
@@ -91,7 +95,8 @@ def portable_detail(detail: str) -> str:
     # Pytest reprs can truncate a path (".../folders/[90 chars]") before the random
     # workspace suffix is visible, so cover the platform temp roots directly as well.
     text = re.sub(r"/(?:private/)?var/folders/[^\s\"')]*", "<workspace>", text)
-    text = re.sub(r"/tmp/[^\s\"')]*", "<workspace>", text)
+    # A path-scrubbing regex, not a temporary file, so the bandit rule does not apply.
+    text = re.sub(r"/tmp/[^\s\"')]*", "<workspace>", text)  # noqa: S108
     text = re.sub(
         r"/[^\s\"']*/\.venv/lib/(python[\d.]+)/site-packages",
         r"<venv>/lib/\1/site-packages",
@@ -188,9 +193,9 @@ def _level_char_stats(records: list[dict]) -> dict:
 
 
 def _library_stats(records: list[dict], exclusions: list[dict]) -> dict:
-    modules = Counter()
-    distributions = Counter()
-    by_source: dict[str, Counter] = {source: Counter() for source in SOURCE_ORDER}
+    modules: Counter[str] = Counter()
+    distributions: Counter[str] = Counter()
+    by_source: dict[str, Counter[str]] = {source: Counter() for source in SOURCE_ORDER}
     for record in records:
         for module in record["requirements"]:
             modules[module] += 1
@@ -292,6 +297,7 @@ def _write_summary(manifest: dict, stats: dict, out_dir: Path) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Parse CLI arguments, run the levels build and return an exit code."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--force", action="store_true", help="redownload and revalidate")
     parser.add_argument("--no-download", action="store_true", help="use cached raw files")

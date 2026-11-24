@@ -1,0 +1,38 @@
+# Dependabot version updates.
+#
+# Runtime libraries (torch, transformers, sentence-transformers, scikit-learn, ...) shape
+# the committed detector results, so they are grouped into one monthly PR and major
+# versions are ignored; a reviewer must confirm `make test` and `make detector-smoothed`
+# still reproduce results/ before merging.  Security updates are not affected by these
+# limits.  requirements-validation.txt is deliberately not covered: it pins the exact
+# environment that produced results/levels/.
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    labels: [dependencies, python]
+    commit-message:
+      prefix: "build(deps)"
+    groups:
+      dev-tools:
+        patterns: ["ruff", "mypy", "pytest*", "types-*"]
+      runtime:
+        patterns: ["*"]
+        exclude-patterns: ["ruff", "mypy", "pytest*", "types-*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [dependencies, github-actions]
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        patterns: ["*"]

@@ -280,3 +280,32 @@ def test_synthetic_train_artifact_roundtrip_is_not_leaking_heldout(tmp_path):
     dataset = train_dataset(tmp_path / "tasks.jsonl")
     assert len(dataset["keys"]) == 500
     assert all(record["split"] == "train" for record in dataset["records"])
+
+
+def test_encoder_loads_the_pinned_revision(monkeypatch):
+    """The manifest and cache key claim ENCODER_REVISION, so the load must pin it."""
+    import sentence_transformers
+
+    from wishrec.detector import encoder
+    from wishrec.detector.constants import ENCODER_NAME, ENCODER_REVISION
+
+    calls: list[tuple[tuple, dict]] = []
+
+    class RecordingModel:
+        def __init__(self, *args, **kwargs):
+            calls.append((args, kwargs))
+
+        def eval(self):
+            return self
+
+    monkeypatch.setattr(sentence_transformers, "SentenceTransformer", RecordingModel)
+    encoder._build_model.cache_clear()
+    try:
+        encoder._build_model()
+    finally:
+        encoder._build_model.cache_clear()
+
+    assert len(calls) == 1
+    args, kwargs = calls[0]
+    assert ENCODER_NAME in args or kwargs.get("model_name_or_path") == ENCODER_NAME
+    assert kwargs.get("revision") == ENCODER_REVISION

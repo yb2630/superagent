@@ -43,8 +43,11 @@ def _build_model() -> SentenceTransformer:
     # The checkpoint is stored in bfloat16, but CPU bfloat16 inference is
     # emulated and much slower on this hardware.  float32 is the right CPU
     # choice and does not change the frozen encoder beyond numeric precision.
+    # Pin the revision: the manifest, cache key and model.json all record
+    # ENCODER_REVISION, so loading the hub's moving ``main`` would mislabel embeddings.
     model = SentenceTransformer(
         ENCODER_NAME,
+        revision=ENCODER_REVISION,
         device="cpu",
         model_kwargs={"dtype": torch.float32},
     )

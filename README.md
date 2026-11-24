@@ -1,5 +1,11 @@
 # What Does a Wish Leave Out?
 
+[![CI](https://github.com/yb2630/superagent/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/yb2630/superagent/actions/workflows/ci.yml)
+[![Paper](https://github.com/yb2630/superagent/actions/workflows/paper.yml/badge.svg?branch=main)](https://github.com/yb2630/superagent/actions/workflows/paper.yml)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](.python-version)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 Requirement recovery in wish-driven code agents. Columbia COMS 4705.
 
 A wish-driven coding agent receives an intent and builds an artifact. When the wish leaves a
@@ -125,17 +131,25 @@ the levels, the detector refit, the report, the bootstrap and the local dry run 
 source is the corrected final text in [`paper/milestone/main.tex`](paper/milestone/main.tex).
 It compiles against the repository's [`paper/neurips_2019.sty`](paper/neurips_2019.sty) and
 [`paper/references.bib`](paper/references.bib) to exactly 3 pages: a 2-page body plus
-references on page 3. From `paper/milestone/`:
+references on page 3. From `paper/milestone/` (the leading `.` matters: with `..:` alone,
+TeX resolves `main.tex` to the extended report in `paper/`):
 
 ```bash
-TEXINPUTS=..: BIBINPUTS=..: pdflatex -interaction=nonstopmode main.tex
-TEXINPUTS=..: BIBINPUTS=..: bibtex main
-TEXINPUTS=..: BIBINPUTS=..: pdflatex -interaction=nonstopmode main.tex
-TEXINPUTS=..: BIBINPUTS=..: pdflatex -interaction=nonstopmode main.tex
+TEXINPUTS=.:..: BIBINPUTS=.:..: pdflatex -interaction=nonstopmode main.tex
+TEXINPUTS=.:..: BIBINPUTS=.:..: bibtex main
+TEXINPUTS=.:..: BIBINPUTS=.:..: pdflatex -interaction=nonstopmode main.tex
+TEXINPUTS=.:..: BIBINPUTS=.:..: pdflatex -interaction=nonstopmode main.tex
 ```
 
 The extended report [`paper/main.pdf`](paper/main.pdf) is compiled from
 [`paper/main.tex`](paper/main.tex) in `paper/` with the same pdfLaTeX/BibTeX sequence.
+
+## Development
+
+`make check` runs everything CI runs: ruff lint and format check, mypy and the test suite.
+`make format` applies fixes. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, pre-commit
+hooks and commit conventions, and [`ARCHITECTURE.md`](ARCHITECTURE.md) for the module layout
+and data flow.
 
 ## What is committed vs regenerated
 
@@ -174,6 +188,9 @@ paper/milestone/        accepted final milestone; submitted/ preserved byte-iden
 paper/main.pdf          extended measured report
 PLAN.md                 final milestone plan and verification
 PROJECT.md              data, harness, detector and pilot design
+ARCHITECTURE.md         module boundaries and data flow
+CONTRIBUTING.md         developer setup, checks and conventions
+.github/                CI workflows, Dependabot, issue and PR templates
 COLAB.md                full operator runbook for the A100 run
 paper/operationalization-notes.md  disclosed protocol limitations
 ```

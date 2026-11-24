@@ -97,7 +97,7 @@ def test_runner_runs_all_nine_conditions_end_to_end_through_a_fake_endpoint(tmp_
         monkeypatch.setenv("VLLM_TOOL_MODE", "auto")
         monkeypatch.setenv("VLLM_TIMEOUT", "10")
         monkeypatch.setenv("VLLM_MAX_RETRIES", "1")
-        monkeypatch.setattr(runner, "load_default_detector", lambda: FakeDetector())
+        monkeypatch.setattr(runner, "load_default_detector", FakeDetector)
         result = runner.run_units(
             tasks=[make_task()],
             conditions=resolve_conditions(None),
@@ -110,9 +110,17 @@ def test_runner_runs_all_nine_conditions_end_to_end_through_a_fake_endpoint(tmp_
         )
         summary = result["summary"]
         assert summary["units"] == 9
-        assert set(summary["conditions"]) == set(
-            ("B1", "H0", "H1", "H2", "H3", "H4", "B2", "B3", "DISCARD")
-        )
+        assert set(summary["conditions"]) == {
+            "B1",
+            "H0",
+            "H1",
+            "H2",
+            "H3",
+            "H4",
+            "B2",
+            "B3",
+            "DISCARD",
+        }
         for condition in summary["conditions"].values():
             assert condition["units"] == 1
             assert condition["passes"] == 1, condition
@@ -127,16 +135,16 @@ def test_runner_resumes_and_skips_cached_units(tmp_path, monkeypatch):
     with FakeEndpoint(handler=generic_response) as endpoint:
         monkeypatch.setenv("VLLM_BASE_URL", endpoint.base_url)
         monkeypatch.setenv("VLLM_TOOL_MODE", "auto")
-        monkeypatch.setattr(runner, "load_default_detector", lambda: FakeDetector())
-        kwargs = dict(
-            tasks=[make_task()],
-            conditions=resolve_conditions(["H0"]),
-            run_id="resume-test",
-            output_dir=tmp_path / "run",
-            samples=1,
-            workers=1,
-            progress=lambda message: None,
-        )
+        monkeypatch.setattr(runner, "load_default_detector", FakeDetector)
+        kwargs = {
+            "tasks": [make_task()],
+            "conditions": resolve_conditions(["H0"]),
+            "run_id": "resume-test",
+            "output_dir": tmp_path / "run",
+            "samples": 1,
+            "workers": 1,
+            "progress": lambda message: None,
+        }
         first = runner.run_units(**kwargs)
         assert first["summary"]["units"] == 1
         requests_after_first = len(endpoint.requests)
@@ -150,15 +158,15 @@ def test_runner_refuses_a_config_change_without_force(tmp_path, monkeypatch):
     with FakeEndpoint(handler=generic_response) as endpoint:
         monkeypatch.setenv("VLLM_BASE_URL", endpoint.base_url)
         monkeypatch.setenv("VLLM_TOOL_MODE", "auto")
-        monkeypatch.setattr(runner, "load_default_detector", lambda: FakeDetector())
-        kwargs = dict(
-            tasks=[make_task()],
-            run_id="mismatch",
-            output_dir=tmp_path / "run",
-            samples=1,
-            workers=1,
-            progress=lambda message: None,
-        )
+        monkeypatch.setattr(runner, "load_default_detector", FakeDetector)
+        kwargs = {
+            "tasks": [make_task()],
+            "run_id": "mismatch",
+            "output_dir": tmp_path / "run",
+            "samples": 1,
+            "workers": 1,
+            "progress": lambda message: None,
+        }
         runner.run_units(conditions=resolve_conditions(["H0"]), **kwargs)
         with pytest.raises(RuntimeError, match="exists with config"):
             runner.run_units(conditions=resolve_conditions(["H1"]), **kwargs)

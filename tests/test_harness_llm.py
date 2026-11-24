@@ -203,7 +203,7 @@ def test_direct_text_call_has_no_protocol_injection():
 
 
 def test_api_error_is_not_retried_into_a_hang():
-    with FakeEndpoint([]) as endpoint:
+    with FakeEndpoint([]):
         client = LLMClient(
             EndpointConfig(
                 base_url="http://127.0.0.1:1/v1",

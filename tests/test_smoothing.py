@@ -9,7 +9,6 @@ from wishrec.detector.data import train_dataset
 from wishrec.harness.config import EndpointConfig
 from wishrec.harness.llm import LLMClient
 from wishrec.harness.smoothing import smooth_tasks
-from wishrec.smoothing import load_smoothing
 
 
 def _client(endpoint, model="Qwen/Qwen3-8B-AWQ") -> LLMClient:

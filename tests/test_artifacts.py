@@ -105,7 +105,7 @@ def test_levels_and_l2_c_are_consistent():
 
 def test_field_presence_matches_stats():
     tasks, _, stats = _load()
-    counts = {field: 0 for field in FIELD_KEYS}
+    counts = dict.fromkeys(FIELD_KEYS, 0)
     for task in tasks:
         assert set(task["field_presence"]) == set(FIELD_KEYS)
         for field in FIELD_KEYS:
@@ -143,7 +143,7 @@ def test_checksums_and_counts_in_manifest():
 
 def test_error_behaviour_prevalence_is_reported_per_source():
     _, manifest, stats = _load()
-    for source, block in stats["field_presence"]["kept"]["by_source"].items():
+    for block in stats["field_presence"]["kept"]["by_source"].values():
         assert block["denominator"] > 0
         assert block["counts"]["intent"] == block["denominator"]
     assert "by_source" in stats["library_requirements"]

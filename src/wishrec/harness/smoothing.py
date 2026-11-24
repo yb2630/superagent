@@ -32,7 +32,6 @@ from ..smoothing import (
     load_smoothing,
 )
 from .config import (
-    EndpointConfig,
     atomic_write_json,
     atomic_write_text,
     environment_info,

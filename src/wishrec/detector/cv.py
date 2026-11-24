@@ -122,8 +122,8 @@ def cross_validate(
         fold_records.append(
             {
                 "fold": fold_index,
-                "train_size": int(len(train_idx)),
-                "test_size": int(len(test_idx)),
+                "train_size": len(train_idx),
+                "test_size": len(test_idx),
                 "prior": prior_info,
                 "tfidf": {
                     "selected_C": tfidf_selection["selected"],

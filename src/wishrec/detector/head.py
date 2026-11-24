@@ -52,7 +52,7 @@ class LinearHead:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "LinearHead":
+    def from_dict(cls, data: dict) -> LinearHead:
         return cls(
             labels=tuple(data["labels"]),
             weights=np.asarray(data["weights"], dtype=np.float64),

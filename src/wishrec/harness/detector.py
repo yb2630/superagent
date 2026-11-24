@@ -11,8 +11,8 @@ from __future__ import annotations
 from functools import lru_cache
 
 from ..detector.constants import (
-    LABELS,
     LABEL_DISPLAY,
+    LABELS,
     QUESTION_TEMPLATES,
 )
 from ..detector.trained import (

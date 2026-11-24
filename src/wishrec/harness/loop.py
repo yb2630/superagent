@@ -13,6 +13,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from .conditions import Condition
 from .config import (
     GENERATOR_MAX_TOKENS,
     GENERATOR_SEED,
@@ -21,7 +22,6 @@ from .config import (
     TURN_CAP,
     utc_now_iso,
 )
-from .conditions import Condition
 from .detector import questions_for
 from .execution import (
     HIDDEN_TIMEOUT,
@@ -203,7 +203,7 @@ def run_repl_unit(
             stakeholder = Stakeholder(llm, task.levels["L0"])
             counter = {"n": 0}
 
-            def ask_fn(question: str) -> str:  # noqa: ANN001
+            def ask_fn(question: str) -> str:
                 counter["n"] += 1
                 return stakeholder.answer(
                     question,

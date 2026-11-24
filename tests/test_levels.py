@@ -48,7 +48,7 @@ def test_l3_is_exactly_the_intent():
 
 def test_l2_c_removes_exactly_one_field():
     built = build_levels(FIELDS, signature_is_code=True)
-    l0 = built["levels"]["L0"]
+    built["levels"]["L0"]
     labels = {
         "intent": "Intent:",
         "signature_types": "Signature and types:",

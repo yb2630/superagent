@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
-from fakes import HIDDEN_TEST, SOLUTION, VISIBLE_TEST, make_task
+from fakes import HIDDEN_TEST, SOLUTION, VISIBLE_TEST
 from wishrec.harness.tools import MAX_CONTENT_BYTES, ToolSession, tool_schemas
 
 

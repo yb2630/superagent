@@ -12,7 +12,7 @@ from .prompts import NOT_SPECIFIED, stakeholder_messages
 
 
 class Stakeholder:
-    def __init__(self, llm, l0_spec: str):
+    def __init__(self, llm, l0_spec: str) -> None:
         if not str(l0_spec).strip():
             raise ValueError("the stakeholder requires a non-empty L0 specification")
         self.llm = llm

@@ -120,7 +120,7 @@ def test_notebook_pins_the_committed_corrected_levels():
     sha = hashlib.sha256((LEVELS / "tasks.jsonl").read_bytes()).hexdigest()
     text = "\n".join(_sources())
     assert f'EXPECTED_LEVELS_SHA256 = "{sha}"' in text
-    assert f'VISIBLE_TESTS = "inputs_only"' in text
+    assert 'VISIBLE_TESTS = "inputs_only"' in text
 
 
 def test_repo_docs_point_at_the_r2_notebook_and_runbook():

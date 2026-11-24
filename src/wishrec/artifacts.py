@@ -108,7 +108,7 @@ def check_records(records: list[dict]) -> dict:
     if not records:
         raise ValueError("no task records")
     keys = set()
-    split_counts = {split: 0 for split in SPLIT_ORDER}
+    split_counts = dict.fromkeys(SPLIT_ORDER, 0)
     for record in records:
         missing = {
             "schema_version",

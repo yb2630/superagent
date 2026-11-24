@@ -124,8 +124,8 @@ def classify_exception(result: RunResult) -> str:
 
 __all__ = [
     "HIDDEN_TIMEOUT",
-    "RunResult",
     "VISIBLE_TIMEOUT",
+    "RunResult",
     "classify_exception",
     "run_hidden_suite",
     "run_python_file",

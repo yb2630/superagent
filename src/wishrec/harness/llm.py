@@ -184,7 +184,7 @@ class LLMClient:
         seed: int | None = None,
         purpose: str = "generator",
         timeout: float | None = None,
-    ):
+    ) -> None:
         self.config = config or EndpointConfig()
         self.temperature = self.config.temperature if temperature is None else temperature
         self.top_p = self.config.top_p if top_p is None else top_p
@@ -300,7 +300,7 @@ class LLMClient:
             try:
                 raw = self._openai().chat.completions.create(**kwargs)
                 return self._parse(raw, transport)
-            except Exception as exc:  # noqa: BLE001 - classified and retried below
+            except Exception as exc:
                 if not self._retryable(exc) or attempt >= self.max_retries - 1:
                     raise
                 last_error = exc
@@ -353,9 +353,9 @@ class LLMClient:
 
 
 __all__ = [
+    "TEXT_PROTOCOL",
     "ChatResult",
     "LLMClient",
-    "TEXT_PROTOCOL",
     "ToolCall",
     "extract_code_block",
     "parse_text_tool_calls",

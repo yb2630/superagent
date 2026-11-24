@@ -72,7 +72,8 @@ def test_r2b_run_is_complete_and_holds_out_nothing():
     splits = {task["key"]: task["split"] for task in _tasks()}
     pilot = {key for key, split in splits.items() if split == "pilot"}
     heldout = {key for key, split in splits.items() if split == "heldout"}
-    assert len(pilot) == 100 and len(heldout) == 300
+    assert len(pilot) == 100
+    assert len(heldout) == 300
     assert set(manifest["config"]["task_keys"]) == pilot
     task_keys = {row["task_key"] for row in _rows()}
     assert task_keys == pilot
@@ -95,7 +96,7 @@ def test_r2b_summary_matches_the_unit_table():
             sum(bool(r["pass"]) for r in selected) / len(selected), abs=5e-4
         )
 
-    for category, item in summary["by_category"].items():
+    for item in summary["by_category"].values():
         assert item["tasks"] > 0
         for values in item["conditions"].values():
             # The category-to-task mapping is not in results.jsonl, so only the overall

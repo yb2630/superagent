@@ -52,7 +52,7 @@ class CategoryQuestion:
 class TrainedDetector:
     name = "trained-silence-detector/r1"
 
-    def __init__(self, model: dict, *, encoder_fn=None):
+    def __init__(self, model: dict, *, encoder_fn=None) -> None:
         if tuple(model.get("labels") or ()) != tuple(LABELS):
             raise ValueError(f"model labels {model.get('labels')} do not match {LABELS}")
         self.model = model

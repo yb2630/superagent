@@ -5,18 +5,16 @@ import json
 import numpy as np
 import pytest
 
-from fakes import make_task
 from wishrec.detector.calibration import (
     apply_calibrators,
     brier_score,
     calibrate_threshold,
     expected_calibration_error,
-    fit_calibrators,
     fit_platt,
     reliability_table,
 )
 from wishrec.detector.constants import LABELS, QUESTION_COUNT_RANGE, UTILITY
-from wishrec.detector.data import kept_label_counts, label_counts, split_counts, train_dataset
+from wishrec.detector.data import kept_label_counts, split_counts, train_dataset
 from wishrec.detector.head import fit_linear_head
 from wishrec.detector.metrics import auroc, detection_summary, macro_f1
 from wishrec.detector.policy import (

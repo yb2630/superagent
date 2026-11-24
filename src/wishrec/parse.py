@@ -139,9 +139,8 @@ def _imported_modules(source: str) -> set[str]:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 modules.add(alias.name.split(".")[0])
-        elif isinstance(node, ast.ImportFrom):
-            if node.level == 0 and node.module:
-                modules.add(node.module.split(".")[0])
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            modules.add(node.module.split(".")[0])
     return modules
 
 
@@ -244,9 +243,11 @@ def _classify_prose(prose: str) -> tuple[str, str, str]:
         sentence, from_label = _strip_section_label(raw)
         if not sentence:
             continue
-        if from_label and re.search(r"\b(Raises?|Exceptions?)\b", raw, re.I):
+        if from_label and re.search(r"\b(Raises?|Exceptions?)\b", raw, re.IGNORECASE):
             errors.append(sentence)
-        elif from_label and re.search(r"\b(Note|Notes|Constraints?|Preconditions?)\b", raw, re.I):
+        elif from_label and re.search(
+            r"\b(Note|Notes|Constraints?|Preconditions?)\b", raw, re.IGNORECASE
+        ):
             constraints.append(sentence)
         elif ERROR_CUE.search(sentence):
             errors.append(sentence)
@@ -482,7 +483,7 @@ def parse_humanevalplus(row: dict, *, visible_tests: str = DEFAULT_VISIBLE_TESTS
     if not typed_def:
         raise ParseError("could not locate the HumanEval+ signature")
     imports = _top_level_imports(prompt)
-    signature_types = "\n\n".join(imports + [typed_def]) if imports else typed_def
+    signature_types = "\n\n".join([*imports, typed_def]) if imports else typed_def
     signature_untyped = _strip_annotations(typed_def)
     docstring = ast.get_docstring(fn, clean=True) or ""
     prose, examples = _extract_docstring_parts(docstring)
@@ -662,7 +663,7 @@ def _split_bcb_description(raw: list[str]) -> tuple[str, list[str], list[str]]:
             in_args = True
             in_examples = False
             continue
-        if stripped.startswith(">>>") or stripped.startswith("..."):
+        if stripped.startswith((">>>", "...")):
             extra_examples.append(stripped)
             in_args = False
             in_examples = True
@@ -708,12 +709,11 @@ def _bcb_doc_fields(doc: dict) -> dict[str, str]:
 
 def _bcb_main_test_class(tree: ast.Module) -> ast.ClassDef:
     for node in tree.body:
-        if isinstance(node, ast.ClassDef):
-            if any(
-                isinstance(child, ast.FunctionDef) and child.name.startswith("test_")
-                for child in node.body
-            ):
-                return node
+        if isinstance(node, ast.ClassDef) and any(
+            isinstance(child, ast.FunctionDef) and child.name.startswith("test_")
+            for child in node.body
+        ):
+            return node
     raise ParseError("BigCodeBench test has no unittest class with test_* methods")
 
 

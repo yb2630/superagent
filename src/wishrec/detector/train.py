@@ -25,7 +25,6 @@ from ..harness.config import (
     atomic_write_text,
     environment_info,
     git_info,
-    sha256_text,
     utc_now_iso,
     write_jsonl,
 )
@@ -347,25 +346,35 @@ def render_report(metrics: dict, *, run_label: str | None = None) -> str:
         f"- Created: {metrics['created_at']}",
         f"- Git commit: `{metrics['git'].get('commit')}`"
         + (" (dirty)" if metrics["git"].get("dirty") else ""),
-        f"- Data: {metrics['data']['tasks']} train tasks, split "
-        f"{metrics['data']['split_counts']}; held-out used: "
-        f"{metrics['data']['heldout_tasks_used']}.",
-        f"- Encoder: frozen `{metrics['encoder']['model']}` "
-        f"(revision `{metrics['encoder']['revision']}`), 1024-d, CPU.",
-        f"- Head: linear 1024->5, BCE + L2, {metrics['training']['head']['epochs']} "
-        f"full-batch AdamW steps, seed {metrics['training']['seed']}; deployed L2="
-        f"{metrics['training']['head']['l2']}.",
+        (
+            f"- Data: {metrics['data']['tasks']} train tasks, split "
+            f"{metrics['data']['split_counts']}; held-out used: "
+            f"{metrics['data']['heldout_tasks_used']}."
+        ),
+        (
+            f"- Encoder: frozen `{metrics['encoder']['model']}` "
+            f"(revision `{metrics['encoder']['revision']}`), 1024-d, CPU."
+        ),
+        (
+            f"- Head: linear 1024->5, BCE + L2, {metrics['training']['head']['epochs']} "
+            f"full-batch AdamW steps, seed {metrics['training']['seed']}; deployed L2="
+            f"{metrics['training']['head']['l2']}."
+        ),
         "",
         "Label: 1 when the category has content in the full L0 specification, i.e. the wish",
-        "omits information the stakeholder can supply. `error_behaviour` has "
-        f"{metrics['data']['label_counts']['error_behaviour']} positives in the 500 train "
-        f"tasks ({metrics['data']['label_counts_all_kept']['error_behaviour']} across all "
-        "1,100 kept tasks); its metrics are reported, not declared undefined.",
+        (
+            "omits information the stakeholder can supply. `error_behaviour` has "
+            f"{metrics['data']['label_counts']['error_behaviour']} positives in the 500 train "
+            f"tasks ({metrics['data']['label_counts_all_kept']['error_behaviour']} across all "
+            "1,100 kept tasks); its metrics are reported, not declared undefined."
+        ),
         "",
         "## Out-of-fold detection (5 folds, inner-fold L2/Platt calibration)",
         "",
-        "| method | macro-F1 | macro-F1 (varying labels) | AUROC examples | AUROC constraints | "
-        "AUROC error | Brier | ECE |",
+        (
+            "| method | macro-F1 | macro-F1 (varying labels) | AUROC examples | AUROC constraints | "
+            "AUROC error | Brier | ECE |"
+        ),
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for method in ("prior", "tfidf", "encoder"):
@@ -411,12 +420,16 @@ def render_report(metrics: dict, *, run_label: str | None = None) -> str:
             "calibrated on deployed-style OOF scores and each task is clamped to 2-3 questions.",
             "",
             f"- Utility: {policy['utility']}",
-            f"- Threshold: {_fmt(policy['threshold'], 4)}; mean questions "
-            f"{_fmt(policy['mean_questions'], 2)}; distribution {policy['distribution']}.",
-            f"- Informative-pair precision {_fmt(policy.get('precision_informative_pairs'))}, "
-            f"recall {_fmt(policy.get('recall_informative_pairs'))}, utility recall "
-            f"{_fmt(policy.get('utility_recall'))}.",
-            f"- Selection rate by category: "
+            (
+                f"- Threshold: {_fmt(policy['threshold'], 4)}; mean questions "
+                f"{_fmt(policy['mean_questions'], 2)}; distribution {policy['distribution']}."
+            ),
+            (
+                f"- Informative-pair precision {_fmt(policy.get('precision_informative_pairs'))}, "
+                f"recall {_fmt(policy.get('recall_informative_pairs'))}, utility recall "
+                f"{_fmt(policy.get('utility_recall'))}."
+            ),
+            "- Selection rate by category: "
             + ", ".join(
                 f"{label} {rate:.2f}"
                 for label, rate in policy["selection_rate_by_category"].items()

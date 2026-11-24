@@ -100,8 +100,10 @@ def withheld_block(questions: list[dict]) -> str:
     lines = [
         "## Questions asked to the stakeholder",
         "",
-        "The stakeholder was asked the following questions, but the answers are "
-        "unavailable. Code defensively for these categories:",
+        (
+            "The stakeholder was asked the following questions, but the answers are "
+            "unavailable. Code defensively for these categories:"
+        ),
         "",
     ]
     for item in questions:
@@ -258,8 +260,8 @@ def smoothing_messages(wish: str) -> list[dict]:
 __all__ = [
     "DIRECT_SYSTEM",
     "FRONTIER_SYSTEM",
-    "NO_DIALOGUE",
     "NOT_SPECIFIED",
+    "NO_DIALOGUE",
     "SELF_CHECK_SYSTEM",
     "SMOOTH_SYSTEM",
     "STAKEHOLDER_SYSTEM",

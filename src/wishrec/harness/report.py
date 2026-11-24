@@ -270,8 +270,10 @@ def build_report(run_dirs: list[Path], *, tasks_path: Path | None = None) -> dic
         "manifests": manifests,
         "notes": [
             "Recovery is computed from measured units only; B1 and H0 are the ceiling and floor.",
-            "Per-category recovery groups tasks by the L0 category that the wish omits; "
-            "the pilot does not run separate L2_c single-field-drop conditions.",
+            (
+                "Per-category recovery groups tasks by the L0 category that the wish omits; "
+                "the pilot does not run separate L2_c single-field-drop conditions."
+            ),
             "The 300 held-out tasks must not appear in any pilot unit.",
         ],
     }
@@ -290,17 +292,23 @@ def render_report(summary: dict) -> str:
         "# R2 GPU pilot report",
         "",
         f"- Generated: {summary['generated_at']}",
-        f"- Tasks: {summary['tasks']}; conditions: {len(summary['conditions'])}; "
-        f"samples per condition: {summary['samples']}",
+        (
+            f"- Tasks: {summary['tasks']}; conditions: {len(summary['conditions'])}; "
+            f"samples per condition: {summary['samples']}"
+        ),
         f"- Units: {summary['completed_units']}/{summary['expected_units']}"
         + (" (complete)" if summary["complete"] else " (INCOMPLETE)"),
         f"- Held-out tasks used: {summary['heldout_tasks_used']}",
-        f"- Tokens: {summary['cost']['total_tokens']:,} "
-        f"(input {summary['cost']['input_tokens']:,}, "
-        f"output {summary['cost']['output_tokens']:,}); paid API cost: $0.00",
-        f"- Wall clock: {summary['time']['wall_clock_h']} h "
-        f"({summary['time']['gpu_hours_estimate']} GPU-h estimate); "
-        f"unit time {summary['time']['unit_duration_h']} h",
+        (
+            f"- Tokens: {summary['cost']['total_tokens']:,} "
+            f"(input {summary['cost']['input_tokens']:,}, "
+            f"output {summary['cost']['output_tokens']:,}); paid API cost: $0.00"
+        ),
+        (
+            f"- Wall clock: {summary['time']['wall_clock_h']} h "
+            f"({summary['time']['gpu_hours_estimate']} GPU-h estimate); "
+            f"unit time {summary['time']['unit_duration_h']} h"
+        ),
         "",
         "| condition | pass@1 | pass rate | recovery | questions | turns | cap hits |",
         "| --- | --- | --- | --- | --- | --- | --- |",

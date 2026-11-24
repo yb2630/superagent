@@ -242,7 +242,7 @@ class FakeEndpoint:
                 self.end_headers()
                 self.wfile.write(body)
 
-            def do_GET(self):  # noqa: N802
+            def do_GET(self):
                 if self.path.rstrip("/").endswith("/models"):
                     self._send_json(
                         {
@@ -261,7 +261,7 @@ class FakeEndpoint:
                 self.send_response(404)
                 self.end_headers()
 
-            def do_POST(self):  # noqa: N802
+            def do_POST(self):
                 length = int(self.headers.get("Content-Length", "0") or 0)
                 payload = json.loads(self.rfile.read(length) or b"{}")
                 endpoint.requests.append(payload)
@@ -275,12 +275,12 @@ class FakeEndpoint:
                     response = text_response("done")
                 self._send_json(response)
 
-            def log_message(self, *args):  # noqa: A003
+            def log_message(self, *args):
                 return
 
         self._handler = Handler
 
-    def __enter__(self) -> "FakeEndpoint":
+    def __enter__(self) -> FakeEndpoint:
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler)
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()

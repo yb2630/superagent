@@ -72,7 +72,6 @@ def load_task_means(
     mean pass@1 over that task's samples and ``sample_counts[condition][task]`` is the
     number of samples behind it.
     """
-
     groups: dict[str, dict[str, list[float]]] = {}
     seen: set[tuple[str, str, int]] = set()
     for row in read_jsonl(results_path):
@@ -117,7 +116,6 @@ def load_task_means(
 
 def bootstrap_indices(tasks: int, resamples: int, seed: int) -> np.ndarray:
     """Draw the shared task index matrix used by every contrast."""
-
     if tasks <= 0:
         raise ValueError("no tasks to resample")
     if resamples <= 0:
@@ -133,7 +131,6 @@ def paired_interval(
     alpha: float = 0.05,
 ) -> tuple[float, float]:
     """Percentile bootstrap interval for the mean of paired task differences."""
-
     values = np.asarray(differences, dtype=float)
     if values.ndim != 1 or values.size == 0:
         raise ValueError("differences must be a non-empty vector")
@@ -154,7 +151,6 @@ def load_summary_grouping(
     report.  Every condition's overall pass@1 and unit count must match the values
     recomputed from ``results.jsonl`` before the grouping is accepted.
     """
-
     summary_path = Path(summary_path)
     try:
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -231,7 +227,6 @@ def build_bootstrap(
     summary_path: Path | None = None,
 ) -> dict:
     """Compute condition means, paired task-level contrasts and category grouping."""
-
     results_path = Path(results_path)
     task_means, sample_counts = load_task_means(results_path)
     conditions = sorted(task_means)
@@ -288,8 +283,10 @@ def build_bootstrap(
             "alpha": alpha,
         },
         "notes": [
-            "Task-level means average each task's three samples; B2 uses pass@1, the "
-            "first of its five direct samples.",
+            (
+                "Task-level means average each task's three samples; B2 uses pass@1, the "
+                "first of its five direct samples."
+            ),
             "The same resample of the 100 tasks is reused for every contrast.",
             "The 300 held-out tasks are absent from the pilot results.",
         ],
@@ -311,15 +308,16 @@ def build_bootstrap(
 
 def render_markdown(summary: dict) -> str:
     """Render the bootstrap artifact as a short Markdown report."""
-
     lines = [
         "# R2b paired task-level bootstrap",
         "",
         f"- Generated: {summary['generated_at']}",
         f"- Source: `{summary['results']}` (sha256 `{summary['results_sha256']}`)",
-        f"- {summary['tasks']} tasks; samples per task "
-        f"{summary['samples_per_task']}; {summary['bootstrap']['resamples']} resamples; "
-        f"seed {summary['bootstrap']['seed']}",
+        (
+            f"- {summary['tasks']} tasks; samples per task "
+            f"{summary['samples_per_task']}; {summary['bootstrap']['resamples']} resamples; "
+            f"seed {summary['bootstrap']['seed']}"
+        ),
     ]
     if summary.get("summary"):
         lines.append(
@@ -358,8 +356,10 @@ def render_markdown(summary: dict) -> str:
                 "",
                 "## Per-category grouping",
                 "",
-                "From `summary.json`: tasks grouped by an L0 category their wish omits "
-                "(categories overlap).",
+                (
+                    "From `summary.json`: tasks grouped by an L0 category their wish omits "
+                    "(categories overlap)."
+                ),
                 "",
                 "| category | tasks | " + " | ".join(CATEGORY_CONDITIONS) + " | H3 recovery |",
                 "| --- | --- | " + " | ".join("---" for _ in CATEGORY_CONDITIONS) + " | --- |",

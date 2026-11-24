@@ -130,8 +130,8 @@ def resolve_conditions(names: list[str] | tuple[str, ...] | None) -> list[Condit
 
 
 __all__ = [
-    "CONDITION_ORDER",
     "CONDITIONS",
+    "CONDITION_ORDER",
     "Condition",
     "get_condition",
     "resolve_conditions",

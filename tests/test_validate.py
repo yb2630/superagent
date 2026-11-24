@@ -34,7 +34,8 @@ def isolated_cache(tmp_path, monkeypatch):
 def test_passing_task_is_validated_and_cached():
     task = make_task()
     first = validate_task(task, use_cache=True)
-    assert first.ok and first.stage == "ok"
+    assert first.ok
+    assert first.stage == "ok"
     assert first.cached is False
     second = validate_task(task, use_cache=True)
     assert second.ok

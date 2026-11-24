@@ -61,7 +61,7 @@ def test_notebook_pipeline_smooths_then_runs_all_conditions_through_a_fake_endpo
             progress=lambda message: None,
         )
         assert artifact.sha256
-        monkeypatch.setattr(runner, "load_default_detector", lambda: FakeDetector())
+        monkeypatch.setattr(runner, "load_default_detector", FakeDetector)
         result = runner.run_units(
             tasks=tasks,
             conditions=resolve_conditions(None),
@@ -121,23 +121,23 @@ def test_shards_are_config_stable_and_resume_per_unit(tmp_path, monkeypatch):
             smoothing_dir,
             progress=lambda message: None,
         )
-        monkeypatch.setattr(runner, "load_default_detector", lambda: FakeDetector())
-        kwargs = dict(
-            tasks=tasks,
-            conditions=resolve_conditions(None),
-            run_id="sharded",
-            output_dir=tmp_path / "run",
-            samples=1,
-            workers=1,
-            smoothing_path=smoothing_dir / "wishes.jsonl",
-            progress=lambda message: None,
-        )
+        monkeypatch.setattr(runner, "load_default_detector", FakeDetector)
+        kwargs = {
+            "tasks": tasks,
+            "conditions": resolve_conditions(None),
+            "run_id": "sharded",
+            "output_dir": tmp_path / "run",
+            "samples": 1,
+            "workers": 1,
+            "smoothing_path": smoothing_dir / "wishes.jsonl",
+            "progress": lambda message: None,
+        }
         first = runner.run_units(shard=0, shards=2, **kwargs)
         assert first["summary"]["units"] == 23
         assert first["summary"]["complete"] is False
         assert first["manifest"]["status"] == "partial"
         assert len((tmp_path / "run" / "results.jsonl").read_text().splitlines()) == 23
-        requests_after_first = len(endpoint.requests)
+        len(endpoint.requests)
 
         second = runner.run_units(shard=1, shards=2, **kwargs)
         assert second["summary"]["units"] == 45
@@ -174,10 +174,10 @@ def test_smoothing_overlay_refuses_a_task_without_a_smoothed_wish(tmp_path, monk
             smoothing_dir,
             progress=lambda message: None,
         )
-        monkeypatch.setattr(runner, "load_default_detector", lambda: FakeDetector())
+        monkeypatch.setattr(runner, "load_default_detector", FakeDetector)
         with pytest.raises(KeyError, match="missing 1 task"):
             runner.run_units(
-                tasks=tasks + [make_task(key="script/extra", source_task_id="extra")],
+                tasks=[*tasks, make_task(key="script/extra", source_task_id="extra")],
                 conditions=resolve_conditions(["H0"]),
                 run_id="missing-smoothing",
                 output_dir=tmp_path / "run",

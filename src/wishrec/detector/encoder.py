@@ -51,8 +51,8 @@ def _load_model():
 
 def embedding_dimension() -> int:
     model = _load_model()
-    getter = getattr(model, "get_embedding_dimension", None) or getattr(
-        model, "get_sentence_embedding_dimension"
+    getter = (
+        getattr(model, "get_embedding_dimension", None) or model.get_sentence_embedding_dimension
     )
     dimension = int(getter())
     if dimension != ENCODER_DIM:
@@ -129,7 +129,7 @@ def encoder_info() -> dict:
 __all__ = [
     "EMBEDDING_CACHE_DIR",
     "embed_cached",
+    "embedding_dimension",
     "encode_texts",
     "encoder_info",
-    "embedding_dimension",
 ]

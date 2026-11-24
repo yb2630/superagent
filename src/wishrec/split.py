@@ -37,7 +37,7 @@ def apportion(
     weight_sum = sum(weights.values())
     if weight_sum <= 0:
         raise ValueError("weights must sum to a positive number")
-    cap_map = {name: total for name in names} if caps is None else dict(caps)
+    cap_map = dict.fromkeys(names, total) if caps is None else dict(caps)
     if sum(cap_map.values()) < total:
         raise ValueError("caps cannot hold the requested total")
     exact = {name: total * weights[name] / weight_sum for name in names}
@@ -166,12 +166,12 @@ def assign_splits(
         rng.shuffle(pool)
         order_by_source[source] = pool
     remaining = {source: len(order_by_source[source]) for source in SOURCE_ORDER}
-    consumed = {source: 0 for source in SOURCE_ORDER}
+    consumed = dict.fromkeys(SOURCE_ORDER, 0)
     assigned: dict[str, list] = {name: [] for name in SPLIT_ORDER}
     by_source: dict[str, dict[str, int]] = {name: {} for name in SPLIT_ORDER}
     for split in SPLIT_ORDER:
         size = targets[split]
-        remaining_total = sum(remaining.values())
+        sum(remaining.values())
         quotas = apportion(size, remaining, caps=remaining)
         for source in SOURCE_ORDER:
             count = quotas[source]

@@ -118,10 +118,7 @@ def reliability_table(
     rows = []
     for index in range(bins):
         low, high = float(edges[index]), float(edges[index + 1])
-        if index == bins - 1:
-            mask = (p >= low) & (p <= high)
-        else:
-            mask = (p >= low) & (p < high)
+        mask = (p >= low) & (p <= high) if index == bins - 1 else (p >= low) & (p < high)
         count = int(mask.sum())
         row = {
             "bin": index + 1,

@@ -37,11 +37,11 @@ from wishrec.detector.train import train_detector  # noqa: E402
 from wishrec.harness.conditions import resolve_conditions  # noqa: E402
 from wishrec.harness.config import EndpointConfig  # noqa: E402
 from wishrec.harness.endpoint_check import check_endpoint  # noqa: E402
+from wishrec.harness.llm import LLMClient  # noqa: E402
 from wishrec.harness.models import load_tasks  # noqa: E402
 from wishrec.harness.report import build_report, render_report  # noqa: E402
 from wishrec.harness.runner import run_units  # noqa: E402
 from wishrec.harness.smoothing import smooth_tasks  # noqa: E402
-from wishrec.harness.llm import LLMClient  # noqa: E402
 
 SOLUTION = "def solution(*args, **kwargs):\n    return None\n"
 
@@ -151,7 +151,7 @@ class FakeEndpoint:
                 self.end_headers()
                 self.wfile.write(body)
 
-            def do_GET(self):  # noqa: N802
+            def do_GET(self):
                 if self.path.rstrip("/").endswith("/models"):
                     self._send(
                         {
@@ -163,20 +163,20 @@ class FakeEndpoint:
                     self.send_response(404)
                     self.end_headers()
 
-            def do_POST(self):  # noqa: N802
+            def do_POST(self):
                 length = int(self.headers.get("Content-Length", "0") or 0)
                 payload = json.loads(self.rfile.read(length) or b"{}")
                 endpoint.requests.append(payload)
                 self._send(_fake_response(payload))
 
-            def log_message(self, *args):  # noqa: A003
+            def log_message(self, *args):
                 return
 
         self._handler = Handler
         self._server = None
         self._thread = None
 
-    def __enter__(self) -> "FakeEndpoint":
+    def __enter__(self) -> FakeEndpoint:
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler)
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()

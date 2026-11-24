@@ -15,7 +15,7 @@ import platform
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ..config import DERIVED_DIR, LEVELS_DIR, REPO_ROOT, RESULTS_DIR
@@ -57,7 +57,7 @@ TOOL_MODES = ("auto", "native", "text")
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def sha256_text(text: str) -> str:
@@ -162,8 +162,8 @@ class EndpointConfig:
         *,
         prefix: str = "VLLM",
         environ: dict[str, str] | None = None,
-        fallback: "EndpointConfig | None" = None,
-    ) -> "EndpointConfig":
+        fallback: EndpointConfig | None = None,
+    ) -> EndpointConfig:
         """Read an endpoint from ``<PREFIX>_*`` variables.
 
         ``prefix="VLLM"`` reads ``VLLM_BASE_URL``, ``VLLM_API_KEY``, ``VLLM_MODEL``,
@@ -234,10 +234,9 @@ def harness_source_hash() -> str:
 __all__ = [
     "CONFIGS_DIR",
     "DATA_DIR",
-    "DERIVED_TASKS_DIR",
     "DEFAULT_BASE_URL",
     "DEFAULT_MODEL",
-    "EndpointConfig",
+    "DERIVED_TASKS_DIR",
     "GENERATOR_MAX_TOKENS",
     "GENERATOR_SEED",
     "GENERATOR_TEMPERATURE",
@@ -252,6 +251,7 @@ __all__ = [
     "STAKEHOLDER_TEMPERATURE",
     "TURN_CAP",
     "VLLM_ENV_EXAMPLE",
+    "EndpointConfig",
     "atomic_write_json",
     "atomic_write_text",
     "environment_info",

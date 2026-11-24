@@ -65,7 +65,7 @@ class Task:
         return int(self.visible_asserts_count or 3)
 
     @classmethod
-    def from_record(cls, record: dict, *, derived_root: Path | None = None) -> "Task":
+    def from_record(cls, record: dict, *, derived_root: Path | None = None) -> Task:
         directory = derived_task_dir(record["source"], record["source_task_id"], root=derived_root)
         visible_path = directory / "visible_test.py"
         hidden_path = directory / "hidden_test.py"

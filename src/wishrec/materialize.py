@@ -17,7 +17,6 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import sys
 from pathlib import Path
 
 from .artifacts import _safe_task_id, sha256_text, write_derived_task

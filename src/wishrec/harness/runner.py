@@ -17,7 +17,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from .conditions import CONDITION_ORDER, Condition, resolve_conditions
+from ..smoothing import SmoothingArtifact, load_smoothing
+from .conditions import Condition, resolve_conditions
 from .config import (
     GENERATOR_SEED,
     QUESTION_BUDGET,
@@ -37,7 +38,6 @@ from .detector import load_default_detector, load_detector, model_path
 from .llm import LLMClient
 from .loop import run_unit
 from .models import Task, load_manifest, load_tasks
-from ..smoothing import SmoothingArtifact, load_smoothing
 
 DEFAULT_OUTPUT_DIR = Path("results/runs")
 CONDITION_SPLIT_NOTE = {"B1": "L0", "B2": "direct 5 samples", "B3": "direct frontier"}
@@ -280,7 +280,7 @@ def summarise(run_dir: Path, config: dict, *, planned_units: int | None = None) 
         f"- Conditions: {', '.join(conditions)}",
         f"- Units: {total_units}/{expected}"
         + (" (complete)" if total_units >= expected else " (partial)"),
-        f"- Smoothed wishes: "
+        "- Smoothed wishes: "
         + (
             f"`{(config.get('smoothing') or {}).get('sha256')}`"
             if config.get("smoothing")

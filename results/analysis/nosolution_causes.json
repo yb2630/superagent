@@ -1,0 +1,337 @@
+{
+  "conditions": {
+    "B1": {
+      "buckets": {
+        "AssertionError": 82,
+        "AttributeError": 3,
+        "NoSolution": 10,
+        "None": 187,
+        "Timeout": 6,
+        "TypeError": 5,
+        "ValueError": 7
+      },
+      "display": "B1",
+      "failures": 113,
+      "nosolution": 10,
+      "nosolution_after_tool_use": 0,
+      "nosolution_causes": {
+        "truncated_output": 1,
+        "unparseable_tool_json": 9
+      },
+      "nosolution_json_errors": {
+        "Expecting ',' delimiter": 7,
+        "Invalid \\escape": 2
+      },
+      "nosolution_with_stub_visible_pass": 0,
+      "pass_at_1": 0.6233,
+      "sensitivity_excluding_harness_terminated": {
+        "excluded_units": 10,
+        "pass_at_1": 0.6448,
+        "units": 290
+      },
+      "units": 300,
+      "units_with_stub_visible_pass": 0
+    },
+    "B2": {
+      "buckets": {
+        "AssertionError": 100,
+        "AttributeError": 6,
+        "KeyError": 1,
+        "NameError": 9,
+        "None": 164,
+        "SyntaxError": 3,
+        "Timeout": 2,
+        "TypeError": 10,
+        "ValueError": 3,
+        "XMLSyntaxError": 2
+      },
+      "display": "B2",
+      "failures": 146,
+      "nosolution": 0,
+      "nosolution_after_tool_use": 0,
+      "nosolution_causes": {},
+      "nosolution_json_errors": {},
+      "nosolution_with_stub_visible_pass": 0,
+      "pass_at_1": 0.5133,
+      "sensitivity_excluding_harness_terminated": {
+        "excluded_units": 0,
+        "pass_at_1": 0.5133,
+        "units": 300
+      },
+      "units": 300,
+      "units_with_stub_visible_pass": 0
+    },
+    "B3": {
+      "buckets": {
+        "AssertionError": 130,
+        "AttributeError": 20,
+        "FileNotFoundError": 4,
+        "IndexError": 1,
+        "KeyError": 2,
+        "None": 93,
+        "SyntaxError": 2,
+        "Timeout": 3,
+        "TypeError": 36,
+        "ValueError": 9
+      },
+      "display": "B3",
+      "failures": 207,
+      "nosolution": 0,
+      "nosolution_after_tool_use": 0,
+      "nosolution_causes": {},
+      "nosolution_json_errors": {},
+      "nosolution_with_stub_visible_pass": 0,
+      "pass_at_1": 0.31,
+      "sensitivity_excluding_harness_terminated": {
+        "excluded_units": 0,
+        "pass_at_1": 0.31,
+        "units": 300
+      },
+      "units": 300,
+      "units_with_stub_visible_pass": 0
+    },
+    "DISCARD": {
+      "buckets": {
+        "AssertionError": 92,
+        "AttributeError": 6,
+        "KeyError": 1,
+        "NoSolution": 55,
+        "None": 128,
+        "Timeout": 2,
+        "TypeError": 8,
+        "ValueError": 8
+      },
+      "display": "H3⁻",
+      "failures": 172,
+      "nosolution": 55,
+      "nosolution_after_tool_use": 48,
+      "nosolution_causes": {
+        "explicit_finish": 47,
+        "prose_reply": 1,
+        "truncated_output": 1,
+        "unparseable_tool_json": 6
+      },
+      "nosolution_json_errors": {
+        "Expecting ',' delimiter": 4,
+        "Invalid \\escape": 2
+      },
+      "nosolution_with_stub_visible_pass": 47,
+      "pass_at_1": 0.4267,
+      "sensitivity_excluding_harness_terminated": {
+        "excluded_units": 8,
+        "pass_at_1": 0.4384,
+        "units": 292
+      },
+      "units": 300,
+      "units_with_stub_visible_pass": 48
+    },
+    "H0": {
+      "buckets": {
+        "AssertionError": 106,
+        "AttributeError": 8,
+        "KeyError": 1,
+        "NoSolution": 9,
+        "None": 156,
+        "Timeout": 1,
+        "TypeError": 11,
+        "ValueError": 6,
+        "XMLSyntaxError": 2
+      },
+      "display": "H0",
+      "failures": 144,
+      "nosolution": 9,
+      "nosolution_after_tool_use": 0,
+      "nosolution_causes": {
+        "truncated_output": 1,
+        "unparseable_tool_json": 8
+      },
+      "nosolution_json_errors": {
+        "Expecting ',' delimiter": 6,
+        "Invalid \\escape": 2
+      },
+      "nosolution_with_stub_visible_pass": 0,
+      "pass_at_1": 0.52,
+      "sensitivity_excluding_harness_terminated": {
+        "excluded_units": 9,
+        "pass_at_1": 0.5361,
+        "units": 291
+      },
+      "units": 300,
+      "units_with_stub_visible_pass": 0
+    },
+    "H1": {
+      "buckets": {
+        "AssertionError": 50,
+        "AttributeError": 7,
+        "FileNotFoundError": 2,
+        "NoSolution": 146,
+        "None": 86,
+        "TypeError": 4,
+        "ValueError": 2,
+        "XMLSyntaxError": 3
+      },
+      "display": "H1",
+      "failures": 214,
+      "nosolution": 146,
+      "nosolution_after_tool_use": 121,
+      "nosolution_causes": {
+        "explicit_finish": 72,
+        "prose_reply": 45,
+        "truncated_output": 8,
+        "unparseable_tool_json": 21
+      },
+      "nosolution_json_errors": {
+        "Expecting ',' delimiter": 18,
+        "Invalid \\escape": 2,
+        "Unterminated string starting at": 1
+      },
+      "nosolution_with_stub_visible_pass": 76,
+      "pass_at_1": 0.2867,
+      "sensitivity_excluding_harness_terminated": {
+        "excluded_units": 74,
+        "pass_at_1": 0.3805,
+        "units": 226
+      },
+      "units": 300,
+      "units_with_stub_visible_pass": 78
+    },
+    "H2": {
+      "buckets": {
+        "AssertionError": 86,
+        "AttributeError": 5,
+        "FileNotFoundError": 1,
+        "IndexError": 2,
+        "KeyError": 2,
+        "NameError": 4,
+        "NoSolution": 54,
+        "NonZeroExit": 2,
+        "None": 133,
+        "Timeout": 2,
+        "TypeError": 4,
+        "ValueError": 5
+      },
+      "display": "H2",
+      "failures": 167,
+      "nosolution": 54,
+      "nosolution_after_tool_use": 54,
+      "nosolution_causes": {
+        "explicit_finish": 33,
+        "prose_reply": 12,
+        "truncated_output": 1,
+        "unparseable_tool_json": 8
+      },
+      "nosolution_json_errors": {
+        "Expecting ',' delimiter": 8
+      },
+      "nosolution_with_stub_visible_pass": 2,
+      "pass_at_1": 0.4433,
+      "sensitivity_excluding_harness_terminated": {
+        "excluded_units": 21,
+        "pass_at_1": 0.4767,
+        "units": 279
+      },
+      "units": 300,
+      "units_with_stub_visible_pass": 2
+    },
+    "H3": {
+      "buckets": {
+        "AssertionError": 106,
+        "FileExistsError": 3,
+        "FileNotFoundError": 1,
+        "IndexError": 3,
+        "NameError": 1,
+        "NoSolution": 1,
+        "None": 161,
+        "Timeout": 6,
+        "TypeError": 5,
+        "ValueError": 13
+      },
+      "display": "H3",
+      "failures": 139,
+      "nosolution": 1,
+      "nosolution_after_tool_use": 0,
+      "nosolution_causes": {
+        "unparseable_tool_json": 1
+      },
+      "nosolution_json_errors": {
+        "Expecting ',' delimiter": 1
+      },
+      "nosolution_with_stub_visible_pass": 0,
+      "pass_at_1": 0.5367,
+      "sensitivity_excluding_harness_terminated": {
+        "excluded_units": 1,
+        "pass_at_1": 0.5385,
+        "units": 299
+      },
+      "units": 300,
+      "units_with_stub_visible_pass": 0
+    },
+    "H4": {
+      "buckets": {
+        "AssertionError": 106,
+        "AttributeError": 6,
+        "FileNotFoundError": 1,
+        "IndexError": 1,
+        "KeyError": 1,
+        "NoSolution": 6,
+        "None": 155,
+        "Timeout": 4,
+        "TypeError": 9,
+        "ValueError": 10,
+        "XMLSyntaxError": 1
+      },
+      "display": "H4",
+      "failures": 145,
+      "nosolution": 6,
+      "nosolution_after_tool_use": 0,
+      "nosolution_causes": {
+        "truncated_output": 2,
+        "unparseable_tool_json": 4
+      },
+      "nosolution_json_errors": {
+        "Invalid \\escape": 2,
+        "Invalid control character at": 2
+      },
+      "nosolution_with_stub_visible_pass": 0,
+      "pass_at_1": 0.5167,
+      "sensitivity_excluding_harness_terminated": {
+        "excluded_units": 6,
+        "pass_at_1": 0.5272,
+        "units": 294
+      },
+      "units": 300,
+      "units_with_stub_visible_pass": 0
+    }
+  },
+  "description": "Termination causes of NoSolution units in the committed pilot, and pass@1 with harness-terminated NoSolution units excluded (a descriptive sensitivity check, not a corrected result).",
+  "harness_termination_causes": [
+    "truncated_output",
+    "unparseable_tool_json",
+    "prose_reply",
+    "empty_reply"
+  ],
+  "inputs": {
+    "units": {
+      "path": "results/runs/r2b-pilot/units",
+      "sha256": "8d03792f4f0a9ca563bce6c881052d1e742c6dd34d54dd30978bea1e5356a40f"
+    }
+  },
+  "totals": {
+    "nosolution": 281,
+    "nosolution_causes": {
+      "explicit_finish": 152,
+      "prose_reply": 58,
+      "truncated_output": 14,
+      "unparseable_tool_json": 57
+    },
+    "nosolution_json_errors": {
+      "Expecting ',' delimiter": 44,
+      "Invalid \\escape": 10,
+      "Invalid control character at": 2,
+      "Unterminated string starting at": 1
+    },
+    "nosolution_with_stub_visible_pass": 125,
+    "units_with_stub_visible_pass": 128
+  },
+  "units": 2700
+}

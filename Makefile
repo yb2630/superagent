@@ -3,7 +3,7 @@ PYTHON ?= .venv/bin/python
 RUN_ID ?= r1-smoke
 VISIBLE_TESTS ?= inputs_only
 
-.PHONY: levels test detector detector-smoothed smoke lint format typecheck coverage check
+.PHONY: levels test detector detector-smoothed smoke analysis lint format typecheck coverage check
 
 # Rebuild results/levels/ from the pinned datasets.  Downloads are cached in data/raw/,
 # canonical-solution checks are cached in data/cache/validation/, and hidden tests plus
@@ -52,6 +52,12 @@ detector-smoothed:
 	PYTHONPATH=src $(UV) run python -m wishrec.detector.train --run-id r2b \
 		--smoothed-wishes results/runs/r2b-pilot/smoothing/wishes.jsonl \
 		--output results/detector-smoothed
+
+# Offline analyses of committed artifacts (CPU, no network): the detector's source-only
+# baseline and the termination causes of NoSolution pilot units.  Writes results/analysis/.
+analysis:
+	PYTHONPATH=src $(UV) run python -m wishrec.analysis.source_baseline
+	PYTHONPATH=src $(UV) run python -m wishrec.analysis.nosolution_causes
 
 # Small local smoke run.  Requires `make levels` for the gitignored hidden tests and a
 # running vLLM endpoint (configs/vllm.env.example).  It writes results/runs/<run-id>/.

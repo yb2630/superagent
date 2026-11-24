@@ -1,0 +1,145 @@
+{
+  "description": "Source-only out-of-fold baseline versus the frozen-encoder detector on the 500 train tasks; folds recomputed and verified against the committed prior column.",
+  "folds": 5,
+  "folds_verified": true,
+  "inputs": {
+    "predictions": {
+      "path": "results/detector-smoothed/cv_predictions.jsonl",
+      "sha256": "7518ea49199ceeff8f0a11a5094a5307bea0329ee76618401869bbe0a02ee18f"
+    }
+  },
+  "label_rate_by_source": {
+    "bigcodebench": {
+      "constraints": 1.0,
+      "error_behaviour": 0.297398,
+      "examples": 1.0
+    },
+    "humanevalplus": {
+      "constraints": 0.166667,
+      "error_behaviour": 0.066667,
+      "examples": 0.85
+    },
+    "mbppplus": {
+      "constraints": 0.081871,
+      "error_behaviour": 0.005848,
+      "examples": 1.0
+    }
+  },
+  "labels": {
+    "constraints": {
+      "encoder_calibrated": {
+        "auroc": 0.951905,
+        "average_precision": 0.974454
+      },
+      "encoder_raw": {
+        "auroc": 0.950735,
+        "average_precision": 0.973694
+      },
+      "encoder_raw_centred_by_source_auroc": 0.578375,
+      "positives": 293,
+      "source_only": {
+        "auroc": 0.962606,
+        "average_precision": 0.979518
+      },
+      "within_source": {
+        "bigcodebench": {
+          "encoder_auroc": null,
+          "encoder_raw_auroc": null,
+          "n": 269,
+          "positives": 269
+        },
+        "humanevalplus": {
+          "encoder_auroc": 0.468,
+          "encoder_raw_auroc": 0.48,
+          "n": 60,
+          "positives": 10
+        },
+        "mbppplus": {
+          "encoder_auroc": 0.533667,
+          "encoder_raw_auroc": 0.523658,
+          "n": 171,
+          "positives": 14
+        }
+      }
+    },
+    "error_behaviour": {
+      "encoder_calibrated": {
+        "auroc": 0.744125,
+        "average_precision": 0.31547
+      },
+      "encoder_raw": {
+        "auroc": 0.73236,
+        "average_precision": 0.306941
+      },
+      "encoder_raw_centred_by_source_auroc": 0.500638,
+      "positives": 85,
+      "source_only": {
+        "auroc": 0.721828,
+        "average_precision": 0.267035
+      },
+      "within_source": {
+        "bigcodebench": {
+          "encoder_auroc": 0.516336,
+          "encoder_raw_auroc": 0.512368,
+          "n": 269,
+          "positives": 80
+        },
+        "humanevalplus": {
+          "encoder_auroc": 0.727679,
+          "encoder_raw_auroc": 0.575893,
+          "n": 60,
+          "positives": 4
+        },
+        "mbppplus": {
+          "encoder_auroc": 0.905882,
+          "encoder_raw_auroc": 0.823529,
+          "n": 171,
+          "positives": 1
+        }
+      }
+    },
+    "examples": {
+      "encoder_calibrated": {
+        "auroc": 0.631591,
+        "average_precision": 0.990256
+      },
+      "encoder_raw": {
+        "auroc": 0.696085,
+        "average_precision": 0.992041
+      },
+      "encoder_raw_centred_by_source_auroc": 0.442408,
+      "positives": 491,
+      "source_only": {
+        "auroc": 0.921136,
+        "average_precision": 0.998342
+      },
+      "within_source": {
+        "bigcodebench": {
+          "encoder_auroc": null,
+          "encoder_raw_auroc": null,
+          "n": 269,
+          "positives": 269
+        },
+        "humanevalplus": {
+          "encoder_auroc": 0.385621,
+          "encoder_raw_auroc": 0.481481,
+          "n": 60,
+          "positives": 51
+        },
+        "mbppplus": {
+          "encoder_auroc": null,
+          "encoder_raw_auroc": null,
+          "n": 171,
+          "positives": 171
+        }
+      }
+    }
+  },
+  "seed": 20261121,
+  "source_counts": {
+    "bigcodebench": 269,
+    "humanevalplus": 60,
+    "mbppplus": 171
+  },
+  "tasks": 500
+}

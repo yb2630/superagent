@@ -60,7 +60,7 @@ def list_models(config: EndpointConfig) -> dict:
     try:
         scheme = urllib.parse.urlsplit(url).scheme
         if scheme not in {"http", "https"}:
-            raise ValueError(f"endpoint URL must use http or https, not {scheme!r}")
+            raise ValueError(f"endpoint URL must start with http:// or https://, got {url!r}")
         # S310: the scheme is restricted to http/https just above.
         request = urllib.request.Request(  # noqa: S310
             url,

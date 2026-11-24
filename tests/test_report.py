@@ -219,3 +219,26 @@ def test_report_flags_a_heldout_unit_outside_the_config_window(tmp_path):
     # The stray unit is not counted toward the configured pilot window.
     assert summary["completed_units"] == 2
     assert summary["complete"] is True
+
+
+def test_report_counts_api_error_units_as_missing_not_as_failures(tmp_path):
+    tasks = _tasks_file(tmp_path)
+    run = _write_run(tmp_path / "run", passes=PASSES)
+    path = run / "units" / "H0" / "1" / "pilot__b.json"
+    unit = json.loads(path.read_text(encoding="utf-8"))
+    unit.update(api_error="APIConnectionError: Connection error.", bucket="NoSolution")
+    path.write_text(json.dumps(unit), encoding="utf-8")
+
+    summary = build_report([run], tasks_path=tasks)
+    assert summary["complete"] is False
+    assert summary["api_error_units"] == 1
+    assert summary["missing_units"] == {"H0": {"expected": 4, "completed": 3}}
+    assert summary["conditions_summary"]["H0"]["units"] == 3
+    assert "API error" in summary["report"]
+
+
+def test_report_omits_the_api_error_count_when_there_are_none(tmp_path):
+    tasks = _tasks_file(tmp_path)
+    summary = build_report([_write_run(tmp_path / "run", passes=PASSES)], tasks_path=tasks)
+    assert "api_error_units" not in summary
+    assert "API error" not in summary["report"]

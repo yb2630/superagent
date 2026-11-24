@@ -42,6 +42,10 @@ filterwarnings = ["ignore::DeprecationWarning"]
 [tool.uv]
 package = false
 
+[tool.codespell]
+# Both spellings are standard; the code base uses "unparseable".
+ignore-words-list = "unparseable"
+
 [tool.coverage.run]
 source = ["src/wishrec"]
 branch = true

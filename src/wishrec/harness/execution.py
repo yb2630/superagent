@@ -24,6 +24,8 @@ HIDDEN_TIMEOUT = 120.0
 
 @dataclass
 class RunResult:
+    """Outcome of one subprocess run; a timeout is reported as return code 124."""
+
     returncode: int
     stdout: str
     stderr: str
@@ -33,9 +35,11 @@ class RunResult:
 
     @property
     def ok(self) -> bool:
+        """Whether the run exited cleanly within its timeout."""
         return self.returncode == 0 and not self.timed_out
 
     def combined(self) -> str:
+        """Return stdout and stderr joined by a newline, stripped."""
         return (self.stdout + ("\n" if self.stdout and self.stderr else "") + self.stderr).strip()
 
 
@@ -86,12 +90,14 @@ def _run(args: list[str], cwd: Path, timeout: float) -> RunResult:
 
 
 def run_python_file(script: Path, cwd: Path, timeout: float = VISIBLE_TIMEOUT) -> RunResult:
+    """Run a Python script in ``cwd`` under the scrubbed environment."""
     return _run([sys.executable, str(script)], cwd, timeout)
 
 
 def run_python_module(
     module: str, cwd: Path, timeout: float = VISIBLE_TIMEOUT, *args: str
 ) -> RunResult:
+    """Run ``python -m module *args`` in ``cwd`` under the scrubbed environment."""
     return _run([sys.executable, "-m", module, *args], cwd, timeout)
 
 
@@ -110,6 +116,7 @@ def run_hidden_suite(source: str, workspace: Path, timeout: float = HIDDEN_TIMEO
 
 
 def classify_exception(result: RunResult) -> str:
+    """Name the last exception in stderr, or ``Timeout``/``NonZeroExit``/``None``."""
     if result.timed_out:
         return "Timeout"
     lines = [line.strip() for line in result.stderr.splitlines() if line.strip()]

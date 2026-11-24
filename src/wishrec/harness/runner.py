@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -34,7 +35,13 @@ from .config import (
     sha256_text,
     utc_now_iso,
 )
-from .detector import load_default_detector, load_detector, model_path
+from .detector import (
+    QuestionSelector,
+    TrainedDetector,
+    load_default_detector,
+    load_detector,
+    model_path,
+)
 from .llm import LLMClient
 from .loop import run_unit
 from .models import Task, load_manifest, load_tasks
@@ -93,10 +100,12 @@ def _doctest_block(task: Task) -> str:
 
 
 def unit_key(condition: Condition, task: Task, sample_index: int) -> str:
+    """Return the ``condition/sample/task`` key that identifies one unit."""
     return f"{condition.name}/{sample_index}/{task.key}"
 
 
 def unit_path(run_dir: Path, condition: Condition, task: Task, sample_index: int) -> Path:
+    """Return the JSON file a unit's result is written to inside ``run_dir``."""
     safe_key = task.key.replace("/", "__")
     return run_dir / "units" / condition.name / str(sample_index) / f"{safe_key}.json"
 
@@ -117,7 +126,7 @@ DETECTOR_IDENTITY_FIELDS = (
 
 
 def detector_identity(detector_path: Path | None = None) -> dict:
-    """The detector artifact a run will use, identified by its learned content."""
+    """Identify the detector artifact a run will use by its learned content."""
     path = Path(detector_path) if detector_path is not None else model_path()
     identity: dict = {"path": str(path), "sha256": None, "present": path.is_file()}
     if not path.is_file():
@@ -158,6 +167,7 @@ def build_config(
     smoothing: SmoothingArtifact | None = None,
     detector_path: Path | None = None,
 ) -> dict:
+    """Return the run config whose hash decides whether stored units can be resumed."""
     return {
         "run_id": run_id,
         "task_keys": [task.key for task in tasks],
@@ -199,8 +209,9 @@ def _compact(result: dict) -> dict:
 
 
 def summarise(run_dir: Path, config: dict, *, planned_units: int | None = None) -> tuple[dict, str]:
+    """Summarise the stored units of one run directory; return the summary and Markdown."""
     conditions = config["conditions"]
-    summaries = {}
+    summaries: dict[str, dict] = {}
     total_units = 0
     for condition_name in conditions:
         units = []
@@ -292,11 +303,11 @@ def summarise(run_dir: Path, config: dict, *, planned_units: int | None = None) 
     ]
     for condition_name in conditions:
         item = summaries[condition_name]
-        buckets = ", ".join(f"{key}:{value}" for key, value in sorted(item["buckets"].items()))
+        bucket_text = ", ".join(f"{key}:{value}" for key, value in sorted(item["buckets"].items()))
         lines.append(
             f"| {condition_name} | {item['passes']}/{item['units']} | "
             f"{item['pass_at_1']} | {item['avg_turns']} | {item['avg_questions']} | "
-            f"{item['turn_cap_units']} | {buckets or '—'} |"
+            f"{item['turn_cap_units']} | {bucket_text or '—'} |"
         )
     lines.extend(
         [
@@ -315,9 +326,10 @@ def execute_unit(
     run_id: str,
     sample_index: int,
     seed: int,
-    detector,
+    detector: QuestionSelector | None,
     siblings: list[dict] | None,
 ) -> dict:
+    """Run one unit against the configured endpoint; an exception becomes an error record."""
     started = time.monotonic()
     config = frontier_config() if condition.b3 else generator_config()
     client = LLMClient(
@@ -425,7 +437,7 @@ def run_units(
     detector_path: Path | None = None,
     shard: int = 0,
     shards: int = 1,
-    progress=print,
+    progress: Callable[[str], object] = print,
 ) -> dict:
     """Execute the planned units, skipping completed ones.
 
@@ -475,7 +487,7 @@ def run_units(
     shards_done = [entry for entry in (previous.get("shards") or []) if isinstance(entry, dict)]
 
     level_manifest = load_manifest()
-    detector = None
+    detector: TrainedDetector | None = None
     if any(condition.targeted for condition in conditions):
         if detector_path is not None:
             detector = load_detector(Path(detector_path))
@@ -514,7 +526,7 @@ def run_units(
     skipped = 0
     errors: list[str] = []
 
-    def job(condition: Condition, task: Task, sample_index: int):
+    def job(condition: Condition, task: Task, sample_index: int) -> tuple[str, dict]:
         path = unit_path(output_dir, condition, task, sample_index)
         if path.exists() and not force:
             try:
@@ -541,6 +553,7 @@ def run_units(
         atomic_write_json(path, result)
         return "done", result
 
+    result: dict | None
     with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
         futures = {
             executor.submit(job, condition, task, sample_index): (
@@ -626,7 +639,8 @@ def run_units(
     return {"manifest": manifest, "summary": summary, "output_dir": str(output_dir)}
 
 
-def _task_selection(args) -> list[Task]:
+def _task_selection(args: argparse.Namespace) -> list[Task]:
+    """Load the tasks selected on the command line; the held-out split is refused."""
     if args.split == "heldout":
         raise SystemExit("refusing to pilot on the held-out split; that split belongs to R3")
     return load_tasks(
@@ -675,6 +689,7 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the ``smoke``, ``pilot`` or ``run`` subcommand (CLI entry)."""
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     smoke = subparsers.add_parser("smoke", help="small development-split smoke run")

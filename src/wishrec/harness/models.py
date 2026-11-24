@@ -29,6 +29,7 @@ def _safe_task_id(source_task_id: str) -> str:
 
 
 def derived_task_dir(source: str, source_task_id: str, root: Path | None = None) -> Path:
+    """Return the gitignored directory holding a task's derived tests and solution."""
     return (root or DERIVED_TASKS_DIR) / source / _safe_task_id(source_task_id)
 
 
@@ -58,14 +59,21 @@ class Task:
 
     @property
     def wish(self) -> str:
+        """The L3 wish shown to the agent."""
         return self.levels["L3"]
 
     @property
     def expected_visible_cases(self) -> int:
+        """Number of visible test cases, defaulting to the milestone's three."""
         return int(self.visible_asserts_count or 3)
 
     @classmethod
     def from_record(cls, record: dict, *, derived_root: Path | None = None) -> Task:
+        """Build a task from its committed record and hash-checked derived files.
+
+        Raises if the derived files are missing or do not match the recorded SHA-256, or
+        if the record's fields and levels are inconsistent.
+        """
         directory = derived_task_dir(record["source"], record["source_task_id"], root=derived_root)
         visible_path = directory / "visible_test.py"
         hidden_path = directory / "hidden_test.py"
@@ -124,6 +132,7 @@ class Task:
 
 
 def load_manifest(path: Path | None = None) -> dict:
+    """Read the committed level manifest (or the JSON file at ``path``)."""
     import json
 
     manifest_path = path or LEVEL_MANIFEST_PATH
@@ -158,10 +167,7 @@ def load_tasks(
     if limit is not None:
         selected = selected[:limit]
     if not require_derived:
-        tasks = []
-        for record in selected:
-            tasks.append(_task_without_derived(record))
-        return tasks
+        return [_task_without_derived(record) for record in selected]
     tasks = [Task.from_record(record, derived_root=derived_root) for record in selected]
     if wanted is not None:
         found = {task.key for task in tasks}

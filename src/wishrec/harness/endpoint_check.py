@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -50,17 +51,27 @@ PROBE_MESSAGES = [
 
 
 def list_models(config: EndpointConfig) -> dict:
-    """GET ``{base_url}/models`` without using the chat client."""
+    """GET ``{base_url}/models`` without using the chat client.
+
+    Only ``http``/``https`` URLs are opened; any other scheme (``file:`` and the like) is
+    reported as a failed probe rather than read.
+    """
     url = config.base_url.rstrip("/") + "/models"
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Authorization": f"Bearer {config.api_key or 'EMPTY'}",
-            "Content-Type": "application/json",
-        },
-    )
     try:
-        with urllib.request.urlopen(request, timeout=min(config.timeout, 60)) as response:
+        scheme = urllib.parse.urlsplit(url).scheme
+        if scheme not in {"http", "https"}:
+            raise ValueError(f"endpoint URL must use http or https, not {scheme!r}")
+        # S310: the scheme is restricted to http/https just above.
+        request = urllib.request.Request(  # noqa: S310
+            url,
+            headers={
+                "Authorization": f"Bearer {config.api_key or 'EMPTY'}",
+                "Content-Type": "application/json",
+            },
+        )
+        with urllib.request.urlopen(  # noqa: S310
+            request, timeout=min(config.timeout, 60)
+        ) as response:
             payload = json.loads(response.read().decode("utf-8"))
         models = [str(item.get("id", "")) for item in payload.get("data", [])]
         return {"ok": True, "url": url, "models": [item for item in models if item]}
@@ -142,7 +153,7 @@ def check_endpoint(config: EndpointConfig | None = None) -> dict:
 
 
 def env_lines(config: EndpointConfig, transport: str) -> str:
-    """A sourceable ``configs/vllm.env``.  A real key is never written."""
+    """Return a sourceable ``configs/vllm.env``.  A real key is never written."""
     lines = [
         "# Written by wishrec.harness.endpoint_check; safe to source.",
         f"VLLM_BASE_URL={config.base_url}",
@@ -162,6 +173,7 @@ def env_lines(config: EndpointConfig, transport: str) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Probe the configured endpoint, write the JSON artifact and optionally an env file."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-id", required=True)
     parser.add_argument(

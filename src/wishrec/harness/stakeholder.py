@@ -8,17 +8,25 @@ is normalized to the documented refusal so the loop can record an unanswered cat
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .prompts import NOT_SPECIFIED, stakeholder_messages
+
+if TYPE_CHECKING:
+    from .llm import ChatClient
 
 
 class Stakeholder:
-    def __init__(self, llm, l0_spec: str) -> None:
+    """Answer clarification questions from the L0 specification alone."""
+
+    def __init__(self, llm: ChatClient, l0_spec: str) -> None:
         if not str(l0_spec).strip():
             raise ValueError("the stakeholder requires a non-empty L0 specification")
         self.llm = llm
         self.l0_spec = str(l0_spec)
 
     def answer(self, question: str, *, meta: dict | None = None) -> str:
+        """Return the stakeholder's answer, or the refusal for an empty question or reply."""
         question = str(question).strip()
         if not question:
             return NOT_SPECIFIED

@@ -27,6 +27,7 @@ def _truncate(text: str, limit: int = MAX_TOOL_OUTPUT) -> str:
 
 
 def tool_schemas(*, allow_acceptance: bool = False, allow_ask: bool = False) -> list[dict]:
+    """Return the OpenAI tool schemas a condition may use."""
     paths = ["solution.py"]
     if allow_acceptance:
         paths.append("acceptance_tests.py")
@@ -109,6 +110,8 @@ def tool_schemas(*, allow_acceptance: bool = False, allow_ask: bool = False) -> 
 
 @dataclass
 class ToolSession:
+    """The tools of one task workspace, with the question budget and a call trace."""
+
     workspace: Path
     source: str = "humanevalplus"
     allow_acceptance: bool = False
@@ -128,6 +131,7 @@ class ToolSession:
             (self.workspace / "solution.py").write_text("", encoding="utf-8")
 
     def schemas(self) -> list[dict]:
+        """Return the schemas currently available; ``ask_stakeholder`` needs budget left."""
         return tool_schemas(
             allow_acceptance=self.allow_acceptance,
             allow_ask=self.ask_fn is not None and self.ask_budget > self.ask_used,
@@ -135,9 +139,11 @@ class ToolSession:
 
     @property
     def remaining_questions(self) -> int:
+        """Questions left in the budget."""
         return max(self.ask_budget - self.ask_used, 0)
 
     def execute(self, name: str, arguments: str | dict) -> str:
+        """Run one tool call and return its text result; errors are returned, not raised."""
         try:
             args = json.loads(arguments) if isinstance(arguments, str) else dict(arguments)
         except Exception as exc:  # noqa: BLE001 - malformed model output is data
@@ -227,6 +233,7 @@ class ToolSession:
 
     # -- trace --------------------------------------------------------------------
     def snapshot(self) -> dict:
+        """Return the session trace recorded with the unit's result."""
         return {
             "calls": self.calls,
             "visible_runs": self.visible_runs,

@@ -8,7 +8,9 @@ pilot cannot accidentally run H3 with untrained questions.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import lru_cache
+from typing import Protocol
 
 from ..detector.constants import (
     LABEL_DISPLAY,
@@ -26,7 +28,15 @@ from ..detector.trained import (
 CATEGORIES = LABELS
 
 
-def questions_for(chosen: list) -> list[dict]:
+class QuestionSelector(Protocol):
+    """Selects clarification categories for a wish (the trained detector or a test fake)."""
+
+    def select_questions(self, wish: str) -> Sequence[CategoryQuestion | CategoryScore]:
+        """Return the categories to ask about, best first."""
+        ...
+
+
+def questions_for(chosen: Sequence[CategoryQuestion | CategoryScore]) -> list[dict]:
     """Expand selected categories into the records the loop and prompts consume."""
     records = []
     for item in chosen:
@@ -54,6 +64,7 @@ def questions_for(chosen: list) -> list[dict]:
 
 @lru_cache(maxsize=1)
 def load_default_detector() -> TrainedDetector:
+    """Load the committed trained detector once per process."""
     return load_detector()
 
 
@@ -63,6 +74,7 @@ __all__ = [
     "LABEL_DISPLAY",
     "CategoryQuestion",
     "CategoryScore",
+    "QuestionSelector",
     "TrainedDetector",
     "load_default_detector",
     "load_detector",

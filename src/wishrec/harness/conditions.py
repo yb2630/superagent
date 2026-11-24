@@ -13,6 +13,8 @@ from .config import QUESTION_BUDGET, TURN_CAP
 
 @dataclass(frozen=True)
 class Condition:
+    """One experimental condition: the wish level shown and the clarification it allows."""
+
     name: str
     level: str
     dialogue: bool
@@ -27,10 +29,12 @@ class Condition:
 
     @property
     def uses_loop(self) -> bool:
+        """Whether the condition runs the ReAct loop (B2 and B3 sample directly)."""
         return not (self.b2_samples or self.b3)
 
     @property
     def pre_asks_detector(self) -> bool:
+        """Whether detector-selected questions are asked before the loop starts."""
         return self.targeted
 
 
@@ -109,12 +113,15 @@ CONDITIONS: dict[str, Condition] = {
 
 CONDITION_ORDER = ("B1", "H0", "H1", "H2", "H3", "H4", "B2", "B3", "DISCARD")
 
-assert len(CONDITION_ORDER) == 9
-assert all(name in CONDITIONS for name in CONDITION_ORDER)
-assert TURN_CAP == 12
+# Import-time invariants of the R1 design; a violation is a programming error.
+if len(CONDITION_ORDER) != 9 or any(name not in CONDITIONS for name in CONDITION_ORDER):
+    raise RuntimeError("CONDITION_ORDER must list exactly the nine defined conditions")
+if TURN_CAP != 12:
+    raise RuntimeError(f"the R1 design fixes the turn cap at 12, not {TURN_CAP}")
 
 
 def get_condition(name: str) -> Condition:
+    """Return the condition called ``name``, with a helpful error for unknown names."""
     try:
         return CONDITIONS[name]
     except KeyError as exc:
@@ -124,6 +131,7 @@ def get_condition(name: str) -> Condition:
 
 
 def resolve_conditions(names: list[str] | tuple[str, ...] | None) -> list[Condition]:
+    """Return the named conditions in the given order, or all nine when none are named."""
     if not names:
         return [CONDITIONS[name] for name in CONDITION_ORDER]
     return [get_condition(name) for name in names]

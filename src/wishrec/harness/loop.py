@@ -12,6 +12,7 @@ from __future__ import annotations
 import tempfile
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .conditions import Condition
 from .config import (
@@ -38,6 +39,11 @@ from .prompts import (
     stakeholder_messages,
 )
 from .stakeholder import Stakeholder
+
+if TYPE_CHECKING:
+    from .detector import QuestionSelector
+    from .llm import ChatClient
+    from .models import Task
 from .tools import ToolSession, tool_schemas
 
 
@@ -75,7 +81,7 @@ def _call_record(result: ChatResult, purpose: str) -> dict:
     }
 
 
-def evaluate_solution(task, solution_source: str, *, timeout: float = HIDDEN_TIMEOUT) -> dict:
+def evaluate_solution(task: Task, solution_source: str, *, timeout: float = HIDDEN_TIMEOUT) -> dict:
     """Run the full hidden suite in a fresh workspace with only the two files."""
     with tempfile.TemporaryDirectory(prefix="wish-eval-") as temporary:
         workspace = Path(temporary)
@@ -108,11 +114,11 @@ def _assistant_message(result: ChatResult) -> dict:
 
 
 def _detector_prepass(
-    task,
+    task: Task,
     condition: Condition,
-    llm,
+    llm: ChatClient,
     *,
-    detector,
+    detector: QuestionSelector,
     sample_index: int,
 ) -> tuple[list[dict], list[dict], list[dict], list[dict], dict]:
     """Ask the detector-selected questions; answers are withheld for DISCARD."""
@@ -160,16 +166,21 @@ def _detector_prepass(
 
 
 def run_repl_unit(
-    task,
+    task: Task,
     condition: Condition,
-    llm,
+    llm: ChatClient,
     *,
-    detector=None,
+    detector: QuestionSelector | None = None,
     siblings: list[dict] | None = None,
     seed: int = GENERATOR_SEED,
     run_id: str = "",
     sample_index: int = 0,
 ) -> dict:
+    """Run one ReAct-loop unit and evaluate the final ``solution.py`` on the hidden suite.
+
+    Targeted conditions (H3, DISCARD) first ask the detector-selected questions; H2 may
+    ask through the ``ask_stakeholder`` tool within its budget.
+    """
     started = time.monotonic()
     started_at = utc_now_iso()
     totals = _totals()
@@ -364,7 +375,10 @@ def run_repl_unit(
     }
 
 
-def _direct_one(task, condition: Condition, llm, *, seed: int, include_visible: bool) -> dict:
+def _direct_one(
+    task: Task, condition: Condition, llm: ChatClient, *, seed: int, include_visible: bool
+) -> dict:
+    """Draw one direct sample, extract its code block and evaluate it on the hidden suite."""
     messages = (
         frontier_messages(task)
         if condition.b3
@@ -417,27 +431,27 @@ def _direct_one(task, condition: Condition, llm, *, seed: int, include_visible: 
 
 
 def run_direct_unit(
-    task,
+    task: Task,
     condition: Condition,
-    llm,
+    llm: ChatClient,
     *,
     seed: int = GENERATOR_SEED,
     run_id: str = "",
     sample_index: int = 0,
 ) -> dict:
+    """Run B2 (several direct samples) or B3 (one frontier sample) for one task."""
     started = time.monotonic()
-    samples = []
     count = 1 if condition.b3 else max(condition.b2_samples, 1)
-    for index in range(count):
-        samples.append(
-            _direct_one(
-                task,
-                condition,
-                llm,
-                seed=seed + index,
-                include_visible=not condition.b3,
-            )
+    samples = [
+        _direct_one(
+            task,
+            condition,
+            llm,
+            seed=seed + index,
+            include_visible=not condition.b3,
         )
+        for index in range(count)
+    ]
     totals = _totals()
     calls: list[dict] = []
     for sample in samples:
@@ -494,16 +508,17 @@ def run_direct_unit(
 
 
 def run_unit(
-    task,
+    task: Task,
     condition: Condition,
-    llm,
+    llm: ChatClient,
     *,
-    detector=None,
+    detector: QuestionSelector | None = None,
     siblings: list[dict] | None = None,
     seed: int = GENERATOR_SEED,
     run_id: str = "",
     sample_index: int = 0,
 ) -> dict:
+    """Run one (task, condition, sample) unit through the loop or the direct sampler."""
     if condition.uses_loop:
         return run_repl_unit(
             task,

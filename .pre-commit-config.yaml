@@ -5,12 +5,14 @@
 # `make lint` and CI always use the same tool versions as uv.lock.
 #
 # Committed research artifacts are hash-checked by the test suite and must stay
-# byte-identical, so the whole data/, results/ and submitted-paper trees are excluded.
+# byte-identical, so the whole data/, results/ and submitted-paper trees and the Colab
+# notebook are excluded.
 exclude: |
   (?x)^(
     data/|
     results/|
     paper/milestone/submitted/|
+    notebooks/.*\.ipynb$|
     .*\.(pdf|parquet|sty)$|
     uv\.lock$
   )

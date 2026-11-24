@@ -10,8 +10,14 @@ from wishrec.validate import (
 )
 
 PASSING_SOLUTION = "def double(x):\n    return x * 2\n"
-PASSING_VISIBLE = "from solution import double\nassert double(2) == 4\nassert double(3) == 6\nassert double(4) == 8\n"
-PASSING_HIDDEN = "from solution import double\nassert double(5) == 10\nassert double(6) == 12\nassert double(7) == 14\n"
+PASSING_VISIBLE = (
+    "from solution import double\n"
+    "assert double(2) == 4\nassert double(3) == 6\nassert double(4) == 8\n"
+)
+PASSING_HIDDEN = (
+    "from solution import double\n"
+    "assert double(5) == 10\nassert double(6) == 12\nassert double(7) == 14\n"
+)
 
 
 def make_task(**overrides):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 
 from wishrec import datasets
@@ -18,11 +19,9 @@ def test_hf_download_is_for_a_dataset_repo(monkeypatch, tmp_path: Path):
 
     monkeypatch.setattr("huggingface_hub.hf_hub_download", fake_download)
     monkeypatch.setattr(datasets, "RAW_DIR", tmp_path / "raw")
-    try:
+    # The fake blob cannot match the pinned SHA-256; the call itself is what we check.
+    with contextlib.suppress(RuntimeError):
         datasets._download(source, force=True)
-    except RuntimeError:
-        # the fake blob cannot match the pinned SHA-256; the call itself is what we check
-        pass
     assert calls["repo_id"] == source.repo
     assert calls["revision"] == source.revision
     assert calls["repo_type"] == "dataset"

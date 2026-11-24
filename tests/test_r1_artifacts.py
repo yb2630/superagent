@@ -83,7 +83,9 @@ def test_committed_model_loads_and_selects_two_or_three_questions():
 def test_cv_predictions_include_oof_scores_for_the_500_train_tasks():
     rows = [
         json.loads(line)
-        for line in open(f"{DETECTOR}/cv_predictions.jsonl", encoding="utf-8")
+        for line in Path(f"{DETECTOR}/cv_predictions.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
         if line.strip()
     ]
     assert len(rows) == 500
@@ -94,7 +96,7 @@ def test_cv_predictions_include_oof_scores_for_the_500_train_tasks():
 
 
 def test_manifest_states_the_heldout_split_is_untouched():
-    manifest = json.loads(open(f"{DETECTOR}/manifest.json", encoding="utf-8").read())
+    manifest = json.loads(Path(f"{DETECTOR}/manifest.json").read_text(encoding="utf-8"))
     assert manifest["heldout_untouched"] is True
     assert manifest["data"]["heldout_tasks_used"] == 0
     assert manifest["encoder"]["model"] == "Qwen/Qwen3-Embedding-0.6B"
@@ -104,14 +106,14 @@ def test_manifest_states_the_heldout_split_is_untouched():
 
 
 def test_report_mentions_error_behaviour_and_the_raw_l3_limitation():
-    report = open(f"{DETECTOR}/report.md", encoding="utf-8").read()
+    report = Path(f"{DETECTOR}/report.md").read_text(encoding="utf-8")
     assert "error_behaviour" in report
     assert "raw first-sentence L3" in report
     assert "H3 question policy" in report
 
 
 def test_vllm_example_documents_the_transport_and_endpoint():
-    example = open("configs/vllm.env.example", encoding="utf-8").read()
+    example = Path("configs/vllm.env.example").read_text(encoding="utf-8")
     for key in (
         "VLLM_BASE_URL",
         "VLLM_API_KEY",

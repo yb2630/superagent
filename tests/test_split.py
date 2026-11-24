@@ -4,17 +4,11 @@ from wishrec.split import apportion, assign_splits, select_kept, split_targets
 
 
 def make_tasks(counts: dict[str, int]) -> list[SimpleNamespace]:
-    tasks = []
-    for source, count in counts.items():
-        for index in range(count):
-            tasks.append(
-                SimpleNamespace(
-                    source=source,
-                    source_task_id=f"{index:04d}",
-                    key=f"{source}/{index:04d}",
-                )
-            )
-    return tasks
+    return [
+        SimpleNamespace(source=source, source_task_id=f"{index:04d}", key=f"{source}/{index:04d}")
+        for source, count in counts.items()
+        for index in range(count)
+    ]
 
 
 def test_apportion_is_exact_and_deterministic():

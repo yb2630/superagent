@@ -76,6 +76,7 @@ def _run_visible_test(tmp_path, task, solution: str):
         capture_output=True,
         text=True,
         timeout=30,
+        check=False,  # callers assert on the return code
     )
 
 

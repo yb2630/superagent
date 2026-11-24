@@ -66,7 +66,8 @@ def test_auto_fallback_loop_works_with_an_endpoint_that_ignores_tools():
             text_response("I will write the implementation."),
             text_response(_json_call("write_file", {"path": "solution.py", "content": SOLUTION})),
             native_response(tool_calls=[("run_visible_tests", {})]),
-            text_response("Done."),
+            # Under the text protocol only the explicit finish ends the loop.
+            text_response('{"tool": "finish"}'),
         ]
     ) as endpoint:
         client = LLMClient(EndpointConfig(base_url=endpoint.base_url, tool_mode="auto"))

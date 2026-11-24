@@ -14,7 +14,8 @@ import os
 import platform
 import subprocess
 import sys
-from dataclasses import dataclass, field
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -143,7 +144,9 @@ class EndpointConfig:
     tool_mode: str = "auto"
     temperature: float = GENERATOR_TEMPERATURE
     top_p: float = GENERATOR_TOP_P
-    enable_thinking: bool = False
+    # Qwen3 thinks unless told not to, so the generator sends an explicit False.  None
+    # omits vLLM's chat_template_kwargs entirely (for non-vLLM endpoints).
+    enable_thinking: bool | None = False
     extra_headers: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -171,7 +174,7 @@ class EndpointConfig:
         cls,
         *,
         prefix: str = "VLLM",
-        environ: dict[str, str] | None = None,
+        environ: Mapping[str, str] | None = None,
         fallback: EndpointConfig | None = None,
     ) -> EndpointConfig:
         """Read an endpoint from ``<PREFIX>_*`` variables.
@@ -201,8 +204,8 @@ class EndpointConfig:
             tool_mode=env.get(f"{prefix}_TOOL_MODE", default.tool_mode).strip().lower(),
             temperature=float(env.get(f"{prefix}_TEMPERATURE", default.temperature)),
             top_p=float(env.get(f"{prefix}_TOP_P", default.top_p)),
-            enable_thinking=_truthy(
-                env.get(f"{prefix}_ENABLE_THINKING", str(default.enable_thinking))
+            enable_thinking=_optional_truthy(
+                env.get(f"{prefix}_ENABLE_THINKING"), default.enable_thinking
             ),
             extra_headers=headers,
         )
@@ -212,20 +215,36 @@ def _truthy(value: str) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
-def generator_config(environ: dict[str, str] | None = None) -> EndpointConfig:
+def _optional_truthy(value: str | None, default: bool | None) -> bool | None:
+    """Parse an optional boolean variable, keeping ``default`` when it is unset."""
+    return default if value is None else _truthy(value)
+
+
+def generator_config(environ: Mapping[str, str] | None = None) -> EndpointConfig:
     """Return the generator endpoint configured by the ``VLLM_*`` variables."""
     return EndpointConfig.from_env(prefix="VLLM", environ=environ)
 
 
-def frontier_config(environ: dict[str, str] | None = None) -> EndpointConfig:
+def frontier_config(environ: Mapping[str, str] | None = None) -> EndpointConfig:
     """Return the B3 endpoint configured by ``VLLM_FRONTIER_*``, else the generator's.
 
     The milestone uses a frontier baseline when the operator supplies one.  With the $0
     budget and no other endpoint, B3 reuses the same Qwen3-8B endpoint at temperature 0.7,
-    as the R1 ticket specifies; the model identity is recorded in the run manifest.
+    as the R1 ticket specifies; the model identity is recorded in the run manifest.  A
+    frontier endpoint on a different host inherits only non-secret settings: its key and
+    headers come from ``VLLM_FRONTIER_API_KEY`` / ``VLLM_FRONTIER_EXTRA_HEADERS``.
     """
-    generator = generator_config(environ)
-    return EndpointConfig.from_env(prefix="VLLM_FRONTIER", environ=environ, fallback=generator)
+    env = os.environ if environ is None else environ
+    generator = generator_config(env)
+    fallback = generator
+    frontier_url = env.get("VLLM_FRONTIER_BASE_URL", "").strip()
+    if frontier_url and frontier_url != generator.base_url:
+        # A different host must not receive the generator's key or tunnel headers, nor
+        # vLLM's chat_template_kwargs extension; it needs its own VLLM_FRONTIER_* values.
+        fallback = replace(
+            generator, api_key=DEFAULT_API_KEY, extra_headers={}, enable_thinking=None
+        )
+    return EndpointConfig.from_env(prefix="VLLM_FRONTIER", environ=env, fallback=fallback)
 
 
 def harness_source_hash() -> str:

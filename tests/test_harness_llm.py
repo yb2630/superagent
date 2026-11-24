@@ -5,7 +5,7 @@ import json
 import openai
 import pytest
 
-from fakes import FakeEndpoint, native_response, text_response
+from fakes import FakeEndpoint, error_response, native_response, text_response
 from wishrec.harness.config import EndpointConfig, frontier_config, generator_config
 from wishrec.harness.llm import (
     TEXT_PROTOCOL,
@@ -215,3 +215,88 @@ def test_api_error_is_not_retried_into_a_hang():
         # One attempt, so the client re-raises the transport error instead of retrying.
         with pytest.raises(openai.APIConnectionError):
             client.chat([{"role": "user", "content": "hi"}], max_tokens=8)
+
+
+def test_auto_mode_falls_back_to_text_when_the_endpoint_rejects_native_tools():
+    """vLLM without --enable-auto-tool-choice answers tool requests with HTTP 400."""
+    payload = {"tool": "write_file", "arguments": {"path": "solution.py", "content": "x = 1"}}
+
+    def handler(request):
+        if "tools" in request:
+            return error_response(400, '"auto" tool choice requires --enable-auto-tool-choice')
+        return text_response(json.dumps(payload))
+
+    with FakeEndpoint(handler=handler) as endpoint:
+        client = LLMClient(EndpointConfig(base_url=endpoint.base_url, tool_mode="auto"))
+        messages = [{"role": "system", "content": "sys"}, {"role": "user", "content": "hi"}]
+        result = client.chat(messages, tools=schemas())
+        assert result.tool_calls[0].name == "write_file"
+        assert result.transport == "text"
+        assert len(endpoint.requests) == 2
+        assert "tools" in endpoint.requests[0]
+        assert "tools" not in endpoint.requests[1]
+
+        client.chat(messages, tools=schemas())
+        assert len(endpoint.requests) == 3
+        assert "tools" not in endpoint.requests[2]
+
+
+def test_native_mode_still_raises_on_a_rejected_tool_request():
+    def handler(request):
+        return error_response(400, "tools unsupported")
+
+    with FakeEndpoint(handler=handler) as endpoint:
+        client = LLMClient(EndpointConfig(base_url=endpoint.base_url, tool_mode="native"))
+        with pytest.raises(openai.BadRequestError):
+            client.chat([{"role": "user", "content": "hi"}], tools=schemas())
+
+
+def test_frontier_on_another_host_does_not_inherit_generator_credentials():
+    environ = {
+        "VLLM_BASE_URL": "http://local/v1",
+        "VLLM_API_KEY": "sk-local-vllm-secret",
+        "VLLM_EXTRA_HEADERS": '{"X-Tunnel": "local-only"}',
+        "VLLM_FRONTIER_BASE_URL": "https://frontier.test/v1",
+    }
+    frontier = frontier_config(environ)
+    assert frontier.api_key != "sk-local-vllm-secret"
+    assert frontier.extra_headers == {}
+    # chat_template_kwargs is a vLLM extension; another host gets it only on request.
+    assert frontier.enable_thinking is None
+
+
+def test_frontier_on_the_generator_host_keeps_the_generator_settings():
+    environ = {
+        "VLLM_BASE_URL": "http://local/v1",
+        "VLLM_API_KEY": "sk-local",
+        "VLLM_EXTRA_HEADERS": '{"X-Tunnel": "t"}',
+    }
+    frontier = frontier_config(environ)
+    assert frontier.api_key == "sk-local"
+    assert frontier.extra_headers == {"X-Tunnel": "t"}
+    assert frontier.enable_thinking is False
+
+
+def test_chat_template_kwargs_are_sent_only_when_thinking_is_configured():
+    with FakeEndpoint([text_response("a"), text_response("b")]) as endpoint:
+        LLMClient(EndpointConfig(base_url=endpoint.base_url)).chat(
+            [{"role": "user", "content": "hi"}]
+        )
+        LLMClient(EndpointConfig(base_url=endpoint.base_url, enable_thinking=None)).chat(
+            [{"role": "user", "content": "hi"}]
+        )
+    # The generator default stays explicit (Qwen3 thinks unless told not to).
+    assert endpoint.requests[0]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert "chat_template_kwargs" not in endpoint.requests[1]
+
+
+def test_a_name_key_in_code_is_not_mistaken_for_a_tool_call():
+    content = 'Example record: {"name": "Alice", "age": 3}\nI will write the file next.'
+    calls, text = parse_text_tool_calls(content)
+    assert calls == []
+    assert text == content
+
+
+def test_name_shape_still_parses_for_a_known_tool():
+    calls, _ = parse_text_tool_calls('{"name": "read_error", "arguments": {}}')
+    assert [call.name for call in calls] == ["read_error"]

@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
 from .config import EndpointConfig
+from .tools import TOOL_NAMES
 
 if TYPE_CHECKING:
     from openai.types.chat import ChatCompletion
@@ -50,6 +51,11 @@ class ChatResult:
     usage: dict
     transport: str = "native"
     finish_reason: str = ""
+    # Text transport only: the reply was the explicit ``{"tool": "finish"}``, or the JSON
+    # error that stopped a tool call from parsing.  The loop uses both to decide whether a
+    # turn without tool calls ends the episode or earns corrective feedback.
+    finished: bool = False
+    parse_error: str = ""
     raw: Any = field(default=None, repr=False)
 
     @property
@@ -112,7 +118,11 @@ _JSON_FENCE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
 
 
 def _candidate_objects(text: str) -> Iterator[str]:
-    """Yield JSON-object candidates: fenced blocks, the whole text, then embedded objects."""
+    """Yield JSON-object candidates in priority order.
+
+    Fenced blocks first, then the whole text when it starts with ``{``, then every object
+    that decodes from an embedded ``{``.
+    """
     for match in _JSON_FENCE.finditer(text or ""):
         yield match.group(1)
     stripped = (text or "").strip()
@@ -134,8 +144,10 @@ def parse_text_tool_calls(content: str) -> tuple[list[ToolCall], str]:
     """Return tool calls encoded in an assistant text message.
 
     Accepts ``{"tool": name, "arguments": {...}}``, the flattened variant with the
-    arguments beside ``tool``, and ``{"name": ..., "arguments": ...}``.  ``finish`` or a
-    message without such an object yields no calls; the loop then ends.
+    arguments beside ``tool``, and ``{"name": ..., "arguments": ...}`` for a known tool
+    name (so ordinary ``"name"`` keys in data are not calls).  ``finish`` or a
+    message without such an object yields no calls; :func:`text_reply_status` tells the
+    two apart for the loop.
     """
     for candidate in _candidate_objects(content):
         try:
@@ -149,6 +161,8 @@ def parse_text_tool_calls(content: str) -> tuple[list[ToolCall], str]:
             return [], ""
         if not isinstance(name, str) or not name:
             continue
+        if "tool" not in payload and name not in TOOL_NAMES:
+            continue  # e.g. {"name": "Alice"} in example data, not a tool call
         arguments = payload.get("arguments")
         if arguments is None:
             arguments = {
@@ -164,6 +178,34 @@ def parse_text_tool_calls(content: str) -> tuple[list[ToolCall], str]:
             arguments_text = json.dumps(arguments, ensure_ascii=False)
         return [ToolCall(id="text-0", name=name, arguments=arguments_text)], ""
     return [], content
+
+
+def text_reply_status(content: str) -> tuple[bool, str]:
+    """Classify a text-protocol reply that yielded no tool call.
+
+    Return ``(finished, parse_error)``: ``finished`` when the reply is the explicit
+    ``finish`` object, else the first JSON error from an object-like candidate (empty when
+    the reply holds no ``{`` at all, i.e. it is prose).
+    """
+    error = ""
+    for candidate in _candidate_objects(content):
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            error = error or str(exc)
+            continue
+        if isinstance(payload, dict) and (
+            (payload.get("tool") or payload.get("name")) == "finish"
+            or payload.get("final") is not None
+        ):
+            return True, ""
+    text = content or ""
+    if not error and "{" in text:
+        try:
+            json.JSONDecoder().raw_decode(text[text.index("{") :])
+        except json.JSONDecodeError as exc:
+            error = str(exc)
+    return False, error
 
 
 def _usage_dict(usage: object) -> dict:
@@ -270,16 +312,34 @@ class LLMClient:
                 seed=self.seed if seed is None else seed,
                 transport="text",
             )
-        result = self._call(
-            messages,
-            tools=tools,
-            temperature=self.temperature if temperature is None else temperature,
-            top_p=self.top_p if top_p is None else top_p,
-            max_tokens=self.max_tokens if max_tokens is None else max_tokens,
-            seed=self.seed if seed is None else seed,
-            transport="native",
-        )
-        if self.config.tool_mode != "auto" or self._transport is not None or not tools:
+        negotiating = bool(self.config.tool_mode == "auto" and self._transport is None and tools)
+        try:
+            result = self._call(
+                messages,
+                tools=tools,
+                temperature=self.temperature if temperature is None else temperature,
+                top_p=self.top_p if top_p is None else top_p,
+                max_tokens=self.max_tokens if max_tokens is None else max_tokens,
+                seed=self.seed if seed is None else seed,
+                transport="native",
+            )
+        except Exception as exc:
+            # vLLM started without --enable-auto-tool-choice rejects any request that
+            # carries tools with HTTP 400.  In auto mode that means "native unsupported":
+            # switch to the text protocol for this turn and the rest of the session.
+            if not negotiating or not tools or getattr(exc, "status_code", None) != 400:
+                raise
+            self._transport = "text"
+            return self._call(
+                _inject_text_protocol(messages, tools),
+                tools=None,
+                temperature=self.temperature if temperature is None else temperature,
+                top_p=self.top_p if top_p is None else top_p,
+                max_tokens=self.max_tokens if max_tokens is None else max_tokens,
+                seed=self.seed if seed is None else seed,
+                transport="text",
+            )
+        if not negotiating or not tools:
             return result
         self._transport = "native"
         if result.tool_calls:
@@ -375,7 +435,9 @@ class LLMClient:
                     arguments=str(getattr(function, "arguments", "{}") or "{}"),
                 )
             )
+        finished, parse_error = False, ""
         if transport == "text" and not calls:
+            finished, parse_error = text_reply_status(content)
             parsed, final_text = parse_text_tool_calls(content)
             calls = parsed
             content = final_text
@@ -386,6 +448,8 @@ class LLMClient:
             usage=_usage_dict(getattr(raw, "usage", None)),
             transport=transport,
             finish_reason=str(getattr(choice, "finish_reason", "") or ""),
+            finished=finished,
+            parse_error=parse_error,
             raw=raw,
         )
 
@@ -398,6 +462,7 @@ __all__ = [
     "ToolCall",
     "extract_code_block",
     "parse_text_tool_calls",
+    "text_reply_status",
 ]
 
 

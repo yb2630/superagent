@@ -1,0 +1,62 @@
+# Build both LaTeX papers and enforce the milestone page limit.
+#
+# The committed PDFs are the record; this job only proves the sources still compile and
+# that the milestone stays within the course's 3-page limit (2-page body + references).
+# The built PDFs are uploaded as an artifact for review.
+name: Paper
+
+on:
+  push:
+    branches: [main]
+    paths: ["paper/**", ".github/workflows/paper.yml"]
+  pull_request:
+    paths: ["paper/**", ".github/workflows/paper.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Compile papers
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MILESTONE_MAX_PAGES: "3"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install TeX Live
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            latexmk texlive-latex-recommended texlive-latex-extra \
+            texlive-fonts-recommended poppler-utils
+      - name: Build milestone
+        working-directory: paper/milestone
+        # `.` must come first: with `..:` alone kpathsea resolves main.tex to paper/main.tex.
+        env:
+          TEXINPUTS: ".:..:"
+          BIBINPUTS: ".:..:"
+        run: latexmk -pdf -interaction=nonstopmode -halt-on-error -outdir="$RUNNER_TEMP/milestone" main.tex
+      - name: Build extended report
+        working-directory: paper
+        run: latexmk -pdf -interaction=nonstopmode -halt-on-error -outdir="$RUNNER_TEMP/report" main.tex
+      - name: Enforce milestone page limit
+        run: |
+          pages=$(pdfinfo "$RUNNER_TEMP/milestone/main.pdf" | awk '/^Pages:/ {print $2}')
+          echo "Milestone pages: $pages (limit $MILESTONE_MAX_PAGES)" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "$pages" -le "$MILESTONE_MAX_PAGES"
+      - name: Upload PDFs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: papers
+          path: |
+            ${{ runner.temp }}/milestone/main.pdf
+            ${{ runner.temp }}/report/main.pdf
+          retention-days: 14

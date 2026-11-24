@@ -1,0 +1,64 @@
+# CodeRabbit AI code review configuration.
+# Schema: https://coderabbit.ai/integrations/schema.v2.json
+# The CodeRabbit GitHub App must be installed on the repository by its owner.
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+tone_instructions: >-
+  Be concise and concrete. This is a research code base for a course project; prioritise
+  correctness, reproducibility and data leakage over style nits that ruff already enforces.
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  collapse_walkthrough: true
+  poem: false
+  in_progress_fortune: false
+  sequence_diagrams: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches: [main]
+  # Committed artifacts are generated and hash-checked; reviewing them is noise.
+  path_filters:
+    - "!data/**"
+    - "!results/**"
+    - "!uv.lock"
+    - "!**/*.pdf"
+    - "!**/*.ipynb"
+    - "!paper/milestone/submitted/**"
+    - "!paper/neurips_2019.sty"
+  path_instructions:
+    - path: "src/wishrec/**/*.py"
+      instructions: >-
+        Check for data leakage between the train, development and 300-task held-out
+        splits; seeded, deterministic behaviour (artifacts are hash-checked); explicit
+        error handling; and accurate type annotations and docstrings. Flag any change that
+        could alter committed results under results/ without regenerating them.
+    - path: "src/wishrec/harness/**/*.py"
+      instructions: >-
+        Generated code is executed in a subprocess workspace. Flag anything that weakens
+        isolation, timeouts or the twelve-turn and five-question budgets.
+    - path: "tests/**/*.py"
+      instructions: >-
+        Tests must run on CPU without network or a model endpoint. Flag tests that would
+        download data, call a live LLM, or depend on test ordering.
+    - path: "paper/**/*.tex"
+      instructions: >-
+        Check that numbers quoted in the text match the committed results and that the
+        milestone stays within its 3-page limit (2-page body plus references).
+    - path: ".github/workflows/*.yml"
+      instructions: >-
+        Actions must be pinned to commit SHAs, permissions minimal, and checkout must use
+        persist-credentials: false.
+  tools:
+    ruff:
+      enabled: true
+    actionlint:
+      enabled: true
+    markdownlint:
+      enabled: true
+    gitleaks:
+      enabled: true
+chat:
+  auto_reply: true

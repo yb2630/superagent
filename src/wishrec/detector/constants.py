@@ -12,6 +12,11 @@ selection.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
+
 #: Five labels, in the milestone order.
 LABELS = (
     "intent",
@@ -81,7 +86,8 @@ DETECTOR_RUN_ID = "r1"
 RESULTS_DETECTOR_DIR = "results/detector"
 
 
-def utility_vector(labels: tuple[str, ...] = LABELS):
+def utility_vector(labels: tuple[str, ...] = LABELS) -> np.ndarray:
+    """Return the question utility of each label, in ``labels`` order, as float64."""
     import numpy as np
 
     return np.asarray([float(UTILITY[label]) for label in labels], dtype=np.float64)

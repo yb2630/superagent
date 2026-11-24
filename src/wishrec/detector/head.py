@@ -17,6 +17,7 @@ from .constants import HEAD_EPOCHS, HEAD_LEARNING_RATE, LABELS
 
 
 def sigmoid(values: np.ndarray) -> np.ndarray:
+    """Return the logistic function elementwise, clipping inputs to ``[-60, 60]``."""
     return 1.0 / (1.0 + np.exp(-np.clip(np.asarray(values, dtype=np.float64), -60.0, 60.0)))
 
 
@@ -27,6 +28,8 @@ def _logit(probability: float, eps: float = 1e-6) -> float:
 
 @dataclass
 class LinearHead:
+    """A fitted linear multi-label head over standardized embeddings."""
+
     labels: tuple[str, ...]
     weights: np.ndarray  # (n_labels, dim)
     bias: np.ndarray  # (n_labels,)
@@ -35,13 +38,16 @@ class LinearHead:
     hyperparameters: dict
 
     def logits(self, X: np.ndarray) -> np.ndarray:
+        """Standardize ``X`` with the training mean/scale and return per-label logits."""
         standardized = (np.asarray(X, dtype=np.float64) - self.mean) / self.scale
         return standardized @ self.weights.T + self.bias
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        """Return independent per-label sigmoid probabilities for the rows of ``X``."""
         return sigmoid(self.logits(X))
 
     def to_dict(self) -> dict:
+        """Serialise the head to a JSON-compatible dict."""
         return {
             "labels": list(self.labels),
             "weights": self.weights.tolist(),
@@ -53,6 +59,7 @@ class LinearHead:
 
     @classmethod
     def from_dict(cls, data: dict) -> LinearHead:
+        """Rebuild a head from the output of :meth:`to_dict`."""
         return cls(
             labels=tuple(data["labels"]),
             weights=np.asarray(data["weights"], dtype=np.float64),
@@ -73,6 +80,11 @@ def fit_linear_head(
     learning_rate: float = HEAD_LEARNING_RATE,
     l2: float = 0.1,
 ) -> LinearHead:
+    """Fit the head on ``X`` and 0/1 targets ``Y`` with seeded full-batch AdamW.
+
+    Weights start at zero and biases at the label log-odds.  A label that is constant in
+    ``Y`` gets zero weights and the Laplace-smoothed base-rate logit as its bias.
+    """
     import torch
 
     X = np.asarray(X, dtype=np.float64)
@@ -140,6 +152,7 @@ def fit_linear_head(
 
 
 def head_predict(head: LinearHead, X: np.ndarray) -> np.ndarray:
+    """Return ``head``'s probabilities for ``X`` cast to float64."""
     return head.predict_proba(np.asarray(X, dtype=np.float64))
 
 

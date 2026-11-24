@@ -18,6 +18,7 @@ def _both_classes(labels: np.ndarray) -> bool:
 
 
 def auroc(labels: np.ndarray, probabilities: np.ndarray) -> float | None:
+    """Return ROC AUC, or ``None`` when ``labels`` contain a single class."""
     from sklearn.metrics import roc_auc_score
 
     y = np.asarray(labels, dtype=np.float64)
@@ -27,6 +28,7 @@ def auroc(labels: np.ndarray, probabilities: np.ndarray) -> float | None:
 
 
 def average_precision(labels: np.ndarray, probabilities: np.ndarray) -> float | None:
+    """Return average precision, or ``None`` when ``labels`` contain a single class."""
     from sklearn.metrics import average_precision_score
 
     y = np.asarray(labels, dtype=np.float64)
@@ -36,6 +38,7 @@ def average_precision(labels: np.ndarray, probabilities: np.ndarray) -> float | 
 
 
 def log_loss(labels: np.ndarray, probabilities: np.ndarray) -> float:
+    """Return mean binary cross-entropy with probabilities clipped to ``[1e-6, 1 - 1e-6]``."""
     y = np.asarray(labels, dtype=np.float64)
     p = np.clip(np.asarray(probabilities, dtype=np.float64), 1e-6, 1.0 - 1e-6)
     return float(-np.mean(y * np.log(p) + (1.0 - y) * np.log(1.0 - p)))
@@ -44,6 +47,7 @@ def log_loss(labels: np.ndarray, probabilities: np.ndarray) -> float:
 def per_label_f1(
     labels: np.ndarray, probabilities: np.ndarray, *, threshold: float = 0.5
 ) -> dict[str, float]:
+    """Return the F1 score of each label column at a fixed probability ``threshold``."""
     from sklearn.metrics import f1_score
 
     y = np.asarray(labels)
@@ -55,6 +59,7 @@ def per_label_f1(
 
 
 def macro_f1(labels: np.ndarray, probabilities: np.ndarray, *, threshold: float = 0.5) -> float:
+    """Return the unweighted mean of the per-label F1 scores."""
     scores = per_label_f1(labels, probabilities, threshold=threshold)
     return float(np.mean(list(scores.values())))
 
@@ -64,6 +69,7 @@ def _rounded(value: float | None) -> float | None:
 
 
 def calibration_summary(labels: np.ndarray, probabilities: np.ndarray, *, bins: int = 10) -> dict:
+    """Return Brier, ECE, log loss and reliability tables per label and pooled."""
     per_label = {}
     for index, label in enumerate(LABELS):
         per_label[label] = {
@@ -90,6 +96,10 @@ def calibration_summary(labels: np.ndarray, probabilities: np.ndarray, *, bins: 
 def detection_summary(
     labels: np.ndarray, probabilities: np.ndarray, *, threshold: float = 0.5
 ) -> dict:
+    """Return per-label ranking/F1 metrics, macro-F1 and the calibration summary.
+
+    ``macro_f1_varying_labels`` averages only labels with both classes present.
+    """
     labels = np.asarray(labels)
     probabilities = np.asarray(probabilities, dtype=np.float64)
     f1_scores = per_label_f1(labels, probabilities, threshold=threshold)
@@ -118,6 +128,7 @@ def detection_summary(
 
 
 def rank_categories(probabilities: np.ndarray) -> list[list[int]]:
+    """Return, per row, category indices by descending probability (ties by index)."""
     matrix = np.asarray(probabilities, dtype=np.float64)
     return [
         sorted(
@@ -140,7 +151,8 @@ def selection_summary(labels: np.ndarray, selected: np.ndarray) -> dict:
     return {
         "mean_questions": round(float(counts.mean()), 4),
         "distribution": {
-            str(int(value)): int(frequency) for value, frequency in zip(values, frequencies)
+            str(int(value)): int(frequency)
+            for value, frequency in zip(values, frequencies, strict=True)
         },
         "selected_total": selected_total,
         "true_positives": true_positive,

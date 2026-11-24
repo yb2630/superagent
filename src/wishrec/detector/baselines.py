@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 
 from .head import fit_linear_head
 
+#: Maps row indices of the full dataset to an ``(n_rows, n_labels)`` probability matrix.
+PredictFn = Callable[[np.ndarray], np.ndarray]
+#: A fitted method: its predictor plus JSON-serialisable fit information.
+FitResult = tuple[PredictFn, dict[str, Any]]
 
-def fit_prior(Y: np.ndarray, train_idx: np.ndarray):
+
+def fit_prior(Y: np.ndarray, train_idx: np.ndarray) -> FitResult:
     """Constant predictor at the training-fold base rate for every category."""
     train_idx = np.asarray(train_idx)
     rates = np.asarray(Y, dtype=np.float64)[train_idx].mean(axis=0)
@@ -25,7 +33,12 @@ def fit_tfidf_logistic(
     *,
     C: float = 1.0,
     seed: int = 20261121,
-):
+) -> FitResult:
+    """Fit one TF-IDF + logistic-regression classifier per label on ``train_idx``.
+
+    Labels that are constant on the training rows get no model; they predict the
+    Laplace-smoothed base rate ``(positives + 1) / (n + 2)`` instead.
+    """
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
 
@@ -55,8 +68,11 @@ def fit_tfidf_logistic(
     def predict(test_idx: np.ndarray) -> np.ndarray:
         X_test = vectorizer.transform([texts[index] for index in np.asarray(test_idx)])
         columns = []
-        for model, constant in zip(models, constants):
+        # Exactly one of model/constant is set per label, so both lists have one entry each.
+        for model, constant in zip(models, constants, strict=True):
             if model is None:
+                if constant is None:
+                    raise RuntimeError("constant label without a base rate")
                 columns.append(np.full(X_test.shape[0], float(constant)))
             else:
                 columns.append(model.predict_proba(X_test)[:, 1])
@@ -82,7 +98,8 @@ def fit_encoder_head(
     epochs: int = 600,
     learning_rate: float = 0.01,
     l2: float = 0.1,
-):
+) -> FitResult:
+    """Fit the linear head on frozen ``embeddings`` restricted to ``train_idx``."""
     train_idx = np.asarray(train_idx)
     head = fit_linear_head(
         np.asarray(embeddings)[train_idx],
@@ -104,4 +121,4 @@ def fit_encoder_head(
     }
 
 
-__all__ = ["fit_encoder_head", "fit_prior", "fit_tfidf_logistic"]
+__all__ = ["FitResult", "PredictFn", "fit_encoder_head", "fit_prior", "fit_tfidf_logistic"]

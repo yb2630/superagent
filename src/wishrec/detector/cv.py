@@ -8,10 +8,13 @@ selection or calibration.  The prior-only baseline is constant.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+from typing import Any
+
 import numpy as np
 from sklearn.model_selection import KFold
 
-from .baselines import fit_encoder_head, fit_prior, fit_tfidf_logistic
+from .baselines import FitResult, PredictFn, fit_encoder_head, fit_prior, fit_tfidf_logistic
 from .calibration import apply_calibrators, fit_calibrators
 from .constants import (
     CV_FOLDS,
@@ -27,14 +30,22 @@ def _mean_brier(probabilities: np.ndarray, labels: np.ndarray) -> float:
 
 
 def _inner_select_and_calibrate(
-    fit_fn_factory,
-    candidates,
+    fit_fn_factory: Callable[[float], Callable[[np.ndarray], FitResult]],
+    candidates: Sequence[float],
     Y: np.ndarray,
     train_idx: np.ndarray,
     *,
     n_labels: int,
     seed: int,
-):
+) -> tuple[PredictFn, dict[str, Any], PredictFn, dict[str, Any]]:
+    """Select a hyperparameter and fit Platt calibrators on inner folds of ``train_idx``.
+
+    ``fit_fn_factory(candidate)`` returns a fit function over row indices.  Each candidate
+    is scored by inner out-of-fold Brier; the winner's inner OOF predictions fit the
+    calibrators, and the winner is refitted on all of ``train_idx``.  Returns the
+    calibrated predictor, its fit info (with an ``inner_selection`` record), the raw
+    uncalibrated predictor and the selection scores.
+    """
     train_idx = np.asarray(train_idx)
     inner = KFold(n_splits=INNER_CALIBRATION_FOLDS, shuffle=True, random_state=seed + 1)
     inner_probabilities = {
@@ -77,6 +88,11 @@ def cross_validate(
     encoder_l2_candidates: tuple[float, ...] = ENCODER_L2_CANDIDATES,
     tfidf_c_candidates: tuple[float, ...] = TFIDF_C_CANDIDATES,
 ) -> dict:
+    """Run outer K-fold CV for the prior, TF-IDF and encoder-head methods.
+
+    Returns calibrated (``oof``) and raw (``raw_oof``) out-of-fold probability matrices
+    per method, plus per-fold selection and calibration records.
+    """
     texts = list(texts)
     embeddings = np.asarray(embeddings, dtype=np.float64)
     Y = np.asarray(Y, dtype=np.float64)

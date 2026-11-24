@@ -122,3 +122,12 @@ def test_endpoint_check_cli_writes_artifact_and_env(tmp_path):
     artifact = json.loads((tmp_path / "endpoint.json").read_text(encoding="utf-8"))
     assert artifact["selected_transport"] == "native"
     assert (tmp_path / "vllm.env").read_text(encoding="utf-8").count("VLLM_TOOL_MODE=native") == 1
+
+
+def test_list_models_explains_a_base_url_without_a_scheme():
+    from wishrec.harness.endpoint_check import list_models
+
+    result = list_models(EndpointConfig(base_url="localhost:8000/v1"))
+    assert result["ok"] is False
+    assert "must start with http:// or https://" in result["error"]
+    assert "'localhost:8000/v1/models'" in result["error"]

@@ -264,6 +264,50 @@ The detector is a frozen encoder with a linear probe; two labels are near-consta
 error-behaviour label is sparse. Recovery uses B1 and H0 on the same 100 tasks, so it is a
 descriptive normalization.
 
+### Findings from the code review
+
+A review of the frozen code and artifacts found the following. None changes a committed
+artifact; the two analyses are reproducible with `make analysis` (see
+[`results/analysis/`](results/analysis/)).
+
+**Detector signal is largely source identity.** A predictor that only knows the source
+benchmark, fit on the same outer folds, matches or beats the encoder: out-of-fold AUROC
+0.963 vs 0.952 for constraints, 0.921 vs 0.632 for examples and 0.722 vs 0.744 for error
+behaviour. Within a single source the encoder is near chance (constraints 0.468 on HumanEval+
+and 0.534 on MBPP+; error behaviour 0.516 on BigCodeBench), and centring its scores by source
+leaves AUROC 0.44–0.58. H3's questions are still sensible, because asking a BigCodeBench task
+about constraints is correct, but the detector evidence shows source-conditional priors, not
+per-wish silence detection ([`source_baseline.md`](results/analysis/source_baseline.md)).
+
+**Loop termination and stub-passing visible tests.** 281 pilot units ended with no solution
+(H1 146, H3⁻ 55, H2 54, B1 10, H0 9, H4 6, H3 1). 129 ended because the harness stopped on a
+reply it could not parse (57 malformed tool JSON, 14 truncated, 58 prose); the pilot loop
+treated any turn without a parseable tool call as finishing. The other 152 were explicit
+finishes, and 125 units overall finished after the inputs-only visible tests had passed on
+the unchanged stub. Both mechanisms concentrate in H1, H2 and H3⁻, so contrasts involving
+those conditions partly measure termination behaviour. Excluding the harness-terminated units
+moves H1 from 0.287 to 0.381 pass@1 and H2 from 0.443 to 0.477 (a descriptive sensitivity
+check, not a corrected result; [`nosolution_causes.md`](results/analysis/nosolution_causes.md)).
+The harness now returns feedback on unparseable replies instead of ending the loop; the
+committed pilot predates that change.
+
+**Field extraction.** MBPP+ intent is the first prose sentence, not the whole prose block;
+later sentences become constraints or error behaviour and leave L2/L3 (31 tasks, e.g.
+`mbppplus/607` loses its return requirement). For HumanEval+, labelled Note/Raises sentences
+are copied into constraints and error behaviour but stay in the intent, so all 19 constraint
+and all 5 error-behaviour fields remain verbatim in L3 although their labels mark them
+deleted; 8 HumanEval+ tasks with an empty examples field carry I/O examples inside the L3
+wish. The intent check accepts only a short verb list (return, create, write, compute, find,
+count, implement), which excludes 26 HumanEval+ tasks that begin "Check…", "Filter…",
+"Add…" and similar.
+
+**Split stability and B2 seeds.** Each source is shuffled as a whole, so a rebuild in an
+environment that validates a different task set reassigns many tasks, including held-out ones
+(dropping one unused task moved 97 held-out tasks). The build now refuses to change a
+committed split without `--allow-resplit`. B2's three samples per task use overlapping seed
+windows (`seed + sample + i`), so they share four of five draws; B2 pass@1 is unaffected, but
+its any-of-five pass rate averages three overlapping estimates.
+
 ## Repository layout
 
 ```

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from .config import (
     ARTIFACT_SCHEMA_VERSION,
@@ -15,8 +16,12 @@ from .config import (
 )
 from .levels import build_levels, level_char_lengths
 
+if TYPE_CHECKING:
+    from .parse import ParsedTask
+
 
 def sha256_text(text: str) -> str:
+    """Return the hex SHA-256 digest of ``text`` encoded as UTF-8."""
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
@@ -27,11 +32,13 @@ def _safe_task_id(source_task_id: str) -> str:
     )
 
 
-def derived_task_dir(task) -> Path:
+def derived_task_dir(task: ParsedTask) -> Path:
+    """Return the gitignored ``data/derived/levels`` directory for one task."""
     return DERIVED_DIR / task.source / _safe_task_id(task.source_task_id)
 
 
-def write_derived_task(task) -> Path:
+def write_derived_task(task: ParsedTask) -> Path:
+    """Write the stub, visible/hidden tests and canonical solution; return the directory."""
     directory = derived_task_dir(task)
     directory.mkdir(parents=True, exist_ok=True)
     files = {
@@ -45,7 +52,8 @@ def write_derived_task(task) -> Path:
     return directory
 
 
-def task_record(task, split: str) -> dict:
+def task_record(task: ParsedTask, split: str) -> dict[str, Any]:
+    """Build the committed ``tasks.jsonl`` record (levels, presence, hashes) for a task."""
     signature_is_code = task.source != "bigcodebench"
     built = build_levels(task.fields, signature_is_code=signature_is_code)
     presence = built["field_presence"]
@@ -80,34 +88,38 @@ def task_record(task, split: str) -> dict:
 
 
 def write_atomic_text(path: Path, text: str) -> None:
+    """Write ``text`` via a ``.part`` file and rename, so readers never see a partial file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".part")
     temporary.write_text(text, encoding="utf-8")
     temporary.replace(path)
 
 
-def write_atomic_json(path: Path, data: dict) -> None:
+def write_atomic_json(path: Path, data: dict[str, Any]) -> None:
+    """Atomically write ``data`` as indented, key-sorted JSON."""
     write_atomic_text(path, json.dumps(data, indent=2, sort_keys=True) + "\n")
 
 
-def write_jsonl(path: Path, records: list[dict]) -> str:
+def write_jsonl(path: Path, records: list[dict[str, Any]]) -> str:
+    """Atomically write ``records`` as key-sorted JSON lines; return the payload SHA-256."""
     lines = [json.dumps(record, sort_keys=True, ensure_ascii=False) for record in records]
     payload = "\n".join(lines) + "\n"
     write_atomic_text(path, payload)
     return sha256_text(payload)
 
 
-def load_jsonl(path: Path) -> list[dict]:
+def load_jsonl(path: Path) -> list[dict[str, Any]]:
+    """Read a JSON-lines file, skipping blank lines."""
     return [
         json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
     ]
 
 
-def check_records(records: list[dict]) -> dict:
+def check_records(records: list[dict[str, Any]]) -> dict[str, int]:
     """Check the task-record schema and internal consistency; return split counts."""
     if not records:
         raise ValueError("no task records")
-    keys = set()
+    keys: set[str] = set()
     split_counts = dict.fromkeys(SPLIT_ORDER, 0)
     for record in records:
         missing = {

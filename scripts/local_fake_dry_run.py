@@ -27,6 +27,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import override
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC = REPO_ROOT / "src"
@@ -38,7 +39,7 @@ from wishrec.harness.conditions import resolve_conditions  # noqa: E402
 from wishrec.harness.config import EndpointConfig  # noqa: E402
 from wishrec.harness.endpoint_check import check_endpoint  # noqa: E402
 from wishrec.harness.llm import LLMClient  # noqa: E402
-from wishrec.harness.models import load_tasks  # noqa: E402
+from wishrec.harness.models import Task, load_tasks  # noqa: E402
 from wishrec.harness.report import build_report, render_report  # noqa: E402
 from wishrec.harness.runner import run_units  # noqa: E402
 from wishrec.harness.smoothing import smooth_tasks  # noqa: E402
@@ -138,6 +139,12 @@ def _fake_response(payload: dict) -> dict:
 
 
 class FakeEndpoint:
+    """In-process OpenAI-compatible HTTP endpoint that records every request.
+
+    Use it as a context manager: entering starts a threaded server on an ephemeral
+    localhost port, and exiting shuts it down.
+    """
+
     def __init__(self) -> None:
         self.requests: list[dict] = []
         endpoint = self
@@ -151,7 +158,7 @@ class FakeEndpoint:
                 self.end_headers()
                 self.wfile.write(body)
 
-            def do_GET(self):
+            def do_GET(self) -> None:
                 if self.path.rstrip("/").endswith("/models"):
                     self._send(
                         {
@@ -163,26 +170,29 @@ class FakeEndpoint:
                     self.send_response(404)
                     self.end_headers()
 
-            def do_POST(self):
+            def do_POST(self) -> None:
                 length = int(self.headers.get("Content-Length", "0") or 0)
                 payload = json.loads(self.rfile.read(length) or b"{}")
                 endpoint.requests.append(payload)
                 self._send(_fake_response(payload))
 
-            def log_message(self, *args):
-                return
+            @override
+            def log_message(self, fmt: str, *args: object) -> None:
+                """Silence the per-request access log."""
 
         self._handler = Handler
-        self._server = None
-        self._thread = None
+        self._server: ThreadingHTTPServer | None = None
+        self._thread: threading.Thread | None = None
 
     def __enter__(self) -> FakeEndpoint:
-        self._server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler)
-        self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
-        self._thread.start()
+        server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self._server = server
+        self._thread = thread
         return self
 
-    def __exit__(self, *exc) -> None:
+    def __exit__(self, *exc: object) -> None:
         if self._server is not None:
             self._server.shutdown()
             self._server.server_close()
@@ -191,11 +201,13 @@ class FakeEndpoint:
 
     @property
     def base_url(self) -> str:
-        assert self._server is not None
+        """Return the ``/v1`` base URL of the running server."""
+        if self._server is None:
+            raise RuntimeError("FakeEndpoint is not running; use it as a context manager")
         return f"http://127.0.0.1:{self._server.server_port}/v1"
 
 
-def _pilot_tasks(limit: int):
+def _pilot_tasks(limit: int) -> list[Task]:
     tasks = load_tasks(split="pilot", require_derived=True)
     # Prefer the two stdlib-only sources so the dry run does not need the pinned
     # BigCodeBench validation library set; fall back to any pilot task.
@@ -207,6 +219,7 @@ def _pilot_tasks(limit: int):
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the five dry-run stages against the fake endpoint and return an exit code."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=REPO_ROOT / ".local-dry-run")
     parser.add_argument("--tasks", type=int, default=5)
@@ -309,7 +322,7 @@ def main(argv: list[str] | None = None) -> int:
                 detector_path=detector_path,
                 shard=shard,
                 shards=args.shards,
-                progress=lambda message: None,
+                progress=lambda _message: None,
             )
             print(
                 f"   units {result['summary']['units']}/"

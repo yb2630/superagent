@@ -72,6 +72,7 @@ class Source:
 
     @property
     def url(self) -> str:
+        """Return the revision-pinned HuggingFace download URL."""
         return (
             f"https://huggingface.co/datasets/{self.repo}/resolve/{self.revision}/{self.filename}"
         )

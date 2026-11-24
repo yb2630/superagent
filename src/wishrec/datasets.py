@@ -11,6 +11,7 @@ from .config import DATA_DIR, RAW_DIR, SOURCE_ORDER, SOURCES, Source
 
 
 def sha256_file(path: Path) -> str:
+    """Return the hex SHA-256 of a file, streamed in 1 MiB chunks."""
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):

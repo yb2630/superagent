@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from fakes import HIDDEN_TEST, FakeLLM, make_task, text_result
 from wishrec.harness.conditions import CONDITION_ORDER, CONDITIONS, get_condition
 from wishrec.harness.prompts import (
@@ -134,12 +136,8 @@ def test_empty_stakeholder_answer_is_normalized_to_refusal():
 
 
 def test_stakeholder_requires_a_specification():
-    try:
+    with pytest.raises(ValueError, match="non-empty"):
         Stakeholder(FakeLLM([]), "   ")
-    except ValueError as exc:
-        assert "non-empty" in str(exc)
-    else:  # pragma: no cover
-        raise AssertionError("empty specification accepted")
 
 
 def test_smoothing_prompt_is_a_separate_temperature_zero_call():

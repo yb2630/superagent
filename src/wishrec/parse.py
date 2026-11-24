@@ -16,6 +16,7 @@ import re
 import sys
 import textwrap
 import warnings
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -48,6 +49,8 @@ class ParseError(ValueError):
 
 @dataclass
 class ParsedTask:
+    """One benchmark row split into specification fields, stub and test sources."""
+
     key: str
     source: str
     source_task_id: str
@@ -64,6 +67,7 @@ class ParsedTask:
 
     @property
     def fields_present(self) -> dict[str, bool]:
+        """Return whether each specification field has non-blank content."""
         return {name: bool(self.fields.get(name, "").strip()) for name in FIELD_KEYS}
 
 
@@ -124,11 +128,9 @@ def _strip_annotations(def_source: str) -> str:
 
 def _top_level_imports(source: str) -> list[str]:
     tree = ast.parse(source)
-    lines = []
-    for node in tree.body:
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            lines.append(ast.unparse(node))
-    return lines
+    return [
+        ast.unparse(node) for node in tree.body if isinstance(node, (ast.Import, ast.ImportFrom))
+    ]
 
 
 def _imported_modules(source: str) -> set[str]:
@@ -174,6 +176,7 @@ def _top_level_preamble(source: str, entry_point: str) -> list[str]:
 
 
 def make_stub(preamble: list[str], signature_untyped: str) -> str:
+    """Return the agent's starting file: the preamble plus an unimplemented signature."""
     parts = []
     if preamble:
         parts.append("\n\n".join(preamble))
@@ -193,9 +196,9 @@ def _split_sentences(text: str) -> list[str]:
     parts = re.split(r"(?<=[.!?])\s+", protected)
     out = []
     for part in parts:
-        part = part.replace("<DOT>", ".").strip()
-        if part:
-            out.append(part)
+        sentence = part.replace("<DOT>", ".").strip()
+        if sentence:
+            out.append(sentence)
     return out
 
 
@@ -343,11 +346,10 @@ def _humaneval_visible_test(
     """
     _validate_visible_tests(visible_tests)
     tree = ast.parse(test_source)
-    check = None
-    for node in tree.body:
-        if isinstance(node, ast.FunctionDef) and node.name == "check":
-            check = node
-            break
+    check = next(
+        (node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "check"),
+        None,
+    )
     if check is None:
         raise ParseError("HumanEval+ test has no check() function")
     inputs: list[ast.expr] | None = None
@@ -407,13 +409,14 @@ def _humaneval_visible_test(
     if visible_tests == "full":
         assertions = "\n".join(
             f"assertion({entry_point}(*{ast.unparse(inp)}), {ast.unparse(res)}, 0)"
-            for inp, res in zip(inputs[:cases], results[:cases])
+            for inp, res in zip(inputs[:cases], results[:cases], strict=True)
         )
-    else:
-        assert inputs_assign is not None
+    elif inputs_assign is not None:
         assertions = (
             f"for inp in {ast.unparse(inputs_assign.value)}:\n    print({entry_point}(*inp))"
         )
+    else:
+        raise ValueError(f"unhandled visible_tests mode {visible_tests!r}")
     return visible, assertions, cases
 
 
@@ -471,6 +474,7 @@ def _mbpp_entry_point(test_source: str, canonical_code: str) -> str:
 # HumanEval+
 # --------------------------------------------------------------------------------------
 def parse_humanevalplus(row: dict, *, visible_tests: str = DEFAULT_VISIBLE_TESTS) -> ParsedTask:
+    """Parse one HumanEval+ row; raise ``ParseError`` when it cannot be made mechanical."""
     _validate_visible_tests(visible_tests)
     source_task_id = str(row["task_id"])
     entry_point = str(row["entry_point"])
@@ -559,6 +563,7 @@ def _mbpp_inputs_only_asserts(assertions: list[str], entry_point: str) -> str:
 
 
 def parse_mbppplus(row: dict, *, visible_tests: str = DEFAULT_VISIBLE_TESTS) -> ParsedTask:
+    """Parse one MBPP+ row; raise ``ParseError`` when it cannot be made mechanical."""
     _validate_visible_tests(visible_tests)
     source_task_id = str(row["task_id"])
     canonical = str(row["code"]).strip("\n") + "\n"
@@ -634,7 +639,7 @@ def parse_mbppplus(row: dict, *, visible_tests: str = DEFAULT_VISIBLE_TESTS) -> 
 # --------------------------------------------------------------------------------------
 # BigCodeBench
 # --------------------------------------------------------------------------------------
-def _bcb_field_text(items: Any) -> list[str]:
+def _bcb_field_text(items: str | Iterable[object] | None) -> list[str]:
     if not items:
         return []
     if isinstance(items, str):
@@ -731,15 +736,15 @@ def _bcb_visible_test(test_source: str, entry_point: str) -> tuple[str, str, lis
     new_class = copy.deepcopy(main_class)
     source_body = main_class.body
     selected_ids = {id(node) for node in selected}
-    new_body = []
-    for original, copied in zip(source_body, new_class.body):
+    new_body: list[ast.stmt] = []
+    for original, copied in zip(source_body, new_class.body, strict=True):
         if isinstance(original, ast.FunctionDef) and original.name.startswith("test_"):
             if id(original) in selected_ids:
                 new_body.append(copied)
         else:
             new_body.append(copied)
     new_class.body = new_body
-    module_body = []
+    module_body: list[ast.stmt] = []
     for node in tree.body:
         if node is main_class:
             module_body.append(new_class)
@@ -843,6 +848,7 @@ def parse_bigcodebench(row: dict, *, visible_tests: str = DEFAULT_VISIBLE_TESTS)
 # Public entry point
 # --------------------------------------------------------------------------------------
 def parse_task(source: str, row: dict, *, visible_tests: str = DEFAULT_VISIBLE_TESTS) -> ParsedTask:
+    """Dispatch a raw row to its source-specific parser."""
     _validate_visible_tests(visible_tests)
     if source == "humanevalplus":
         return parse_humanevalplus(row, visible_tests=visible_tests)

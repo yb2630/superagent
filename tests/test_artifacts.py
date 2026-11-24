@@ -181,9 +181,11 @@ def test_portable_detail_rewrites_local_paths():
 
     home = str(Path.home())
     detail = (
-        '  File "/private/var/folders/9n/abc/T/wishrec-validate-czco4ya9/visible_test.py", line 16\n'
+        '  File "/private/var/folders/9n/abc/T/wishrec-validate-czco4ya9/visible_test.py", '
+        "line 16\n"
         '  File "/Users/alice/work/.venv/lib/python3.12/site-packages/pandas/core/x.py", line 3\n'
-        '  File "/Users/alice/.local/share/uv/python/cpython-3.12.15-none/lib/python3.12/re.py", line 1\n'
+        '  File "/Users/alice/.local/share/uv/python/cpython-3.12.15-none/lib/python3.12/re.py", '
+        "line 1\n"
         f"data at {home}/nltk_data\n"
         "PosixPath('/private/var/folders/9n/phmsx2[90 chars]act')\n"
     )

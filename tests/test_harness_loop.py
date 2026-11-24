@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from fakes import (
     SOLUTION,
     FakeDetector,
@@ -105,12 +107,8 @@ def test_h3_asks_detector_questions_and_uses_the_answers():
 
 
 def test_h3_without_a_detector_is_an_explicit_error():
-    try:
+    with pytest.raises(ValueError, match="requires a trained detector"):
         run_repl_unit(make_task(), get_condition("H3"), FakeLLM([]), detector=None)
-    except ValueError as exc:
-        assert "requires a trained detector" in str(exc)
-    else:  # pragma: no cover
-        raise AssertionError("H3 ran without a detector")
 
 
 def test_discard_asks_the_same_questions_but_withholds_the_answers():

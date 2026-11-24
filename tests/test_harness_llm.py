@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+import openai
 import pytest
 
 from fakes import FakeEndpoint, native_response, text_response
@@ -52,7 +53,7 @@ def test_endpoint_config_reads_environment_and_never_exposes_key():
 
 
 def test_invalid_tool_mode_is_rejected():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="tool_mode must be one of"):
         EndpointConfig(tool_mode="magic")
 
 
@@ -211,5 +212,6 @@ def test_api_error_is_not_retried_into_a_hang():
                 max_retries=1,
             )
         )
-        with pytest.raises(Exception):
+        # One attempt, so the client re-raises the transport error instead of retrying.
+        with pytest.raises(openai.APIConnectionError):
             client.chat([{"role": "user", "content": "hi"}], max_tokens=8)

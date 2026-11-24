@@ -309,3 +309,21 @@ def test_encoder_loads_the_pinned_revision(monkeypatch):
     args, kwargs = calls[0]
     assert ENCODER_NAME in args or kwargs.get("model_name_or_path") == ENCODER_NAME
     assert kwargs.get("revision") == ENCODER_REVISION
+
+
+def test_default_detector_is_the_final_smoothed_detector():
+    """Without --detector, H3 must use results/detector-smoothed, not the R1 artifact."""
+    from pathlib import Path
+
+    from wishrec.detector.trained import default_model_path
+    from wishrec.harness.runner import detector_identity
+
+    final = Path("results/detector-smoothed/model.json").resolve()
+    assert default_model_path().resolve() == final
+    assert load_detector().model == json.loads(final.read_text(encoding="utf-8"))
+    assert Path(detector_identity()["path"]).resolve() == final
+
+
+def test_missing_detector_message_names_the_reproducing_target(tmp_path):
+    with pytest.raises(FileNotFoundError, match="make detector-smoothed"):
+        load_detector(tmp_path / "model.json")

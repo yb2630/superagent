@@ -51,12 +51,15 @@ def _download(source: Source, force: bool = False) -> dict:
         dest.parent.mkdir(parents=True, exist_ok=True)
         temporary = dest.with_suffix(dest.suffix + ".part")
         shutil.copyfile(cached, temporary)
-        temporary.replace(dest)
-        digest = sha256_file(dest)
+        # Verify before moving into place, so a bad download never sits at the final path
+        # where later stages would read it.
+        digest = sha256_file(temporary)
         if digest != source.sha256:
+            temporary.unlink()
             raise RuntimeError(
                 f"downloaded {source.name} sha256 {digest} != pinned {source.sha256}"
             )
+        temporary.replace(dest)
     return {
         "name": source.name,
         "repo": source.repo,
@@ -95,13 +98,19 @@ def _load_file(source: Source) -> list[dict]:
 
 
 def load_raw_rows() -> dict[str, list[dict]]:
-    """Read the pinned files and check row counts."""
+    """Read the pinned files, checking each file's SHA-256 and row count."""
     rows: dict[str, list[dict]] = {}
     for name in SOURCE_ORDER:
         source = SOURCES[name]
         path = _raw_path(source)
         if not path.exists():
             raise FileNotFoundError(f"missing {path}; run make levels or download first")
+        digest = sha256_file(path)
+        if digest != source.sha256:
+            raise RuntimeError(
+                f"{path} has sha256 {digest}, expected the pinned {source.sha256}; "
+                "delete it and rerun make levels to download the pinned file"
+            )
         source_rows = _load_file(source)
         if len(source_rows) != source.expected_rows:
             raise RuntimeError(

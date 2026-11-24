@@ -48,7 +48,7 @@ def test_l3_is_exactly_the_intent():
 
 def test_l2_c_removes_exactly_one_field():
     built = build_levels(FIELDS, signature_is_code=True)
-    built["levels"]["L0"]
+    l0 = built["levels"]["L0"]
     labels = {
         "intent": "Intent:",
         "signature_types": "Signature and types:",
@@ -56,6 +56,9 @@ def test_l2_c_removes_exactly_one_field():
         "constraints": "Constraints and edge cases:",
         "error_behaviour": "Error behaviour:",
     }
+    # L0 carries every field, so each L2_c drop is measured against a complete baseline.
+    for label in labels.values():
+        assert label in l0, label
     for category, label in labels.items():
         drop = built["L2_c"][category]
         assert drop["field_present"] is True

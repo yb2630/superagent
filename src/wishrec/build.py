@@ -2,7 +2,13 @@
 
 Run with ``make levels`` or ``PYTHONPATH=src python -m wishrec.build``.  The committed
 artifacts are ``results/levels/tasks.jsonl``, ``manifest.json`` and ``stats.json``; hidden
-tests and canonical solutions are written to gitignored ``data/derived/levels/``.
+tests and canonical solutions are written to the committed ``data/derived/levels/`` (or to
+``<out>/derived`` when ``--out`` points elsewhere).
+
+The build refuses to overwrite an existing ``tasks.jsonl`` whose split assignment would
+change: validation outcomes depend on the environment, and a different valid-task set
+reshuffles each source, which would silently move held-out tasks into train or the pilot.
+Pass ``--allow-resplit`` to accept a new split deliberately.
 """
 
 from __future__ import annotations
@@ -25,7 +31,6 @@ from .artifacts import (
     sha256_text,
     task_record,
     write_atomic_json,
-    write_derived_task,
     write_jsonl,
 )
 from .config import (
@@ -39,6 +44,7 @@ from .config import (
     LEVELS_DIR,
     PARSER_VERSION,
     PIPELINE_VERSION,
+    REPO_ROOT,
     SOURCE_ORDER,
     SOURCES,
     SPLIT_ORDER,
@@ -51,6 +57,7 @@ from .config import (
     VISIBLE_TEST_MODES,
 )
 from .datasets import download_sources, load_raw_rows
+from .materialize import write_task_files
 from .parse import parse_task
 from .split import assign_splits, select_kept
 from .validate import environment_info, validate_all
@@ -296,15 +303,86 @@ def _write_summary(manifest: dict, stats: dict, out_dir: Path) -> None:
     print("done")
 
 
+def resolve_derived_dir(out: Path, derived: Path | None) -> Path:
+    """Return where derived test files go for a build writing results to ``out``.
+
+    An explicit ``derived`` wins.  Otherwise the committed ``data/derived/levels`` is used
+    only for the default output directory; a scratch ``--out`` gets ``<out>/derived`` so it
+    can never overwrite the committed derived files.
+    """
+    if derived is not None:
+        return derived
+    if Path(out).resolve() == LEVELS_DIR.resolve():
+        return DERIVED_DIR
+    return Path(out) / "derived"
+
+
+def check_split_unchanged(
+    tasks_path: Path, records: list[dict[str, Any]], *, allow_resplit: bool
+) -> None:
+    """Refuse to replace ``tasks_path`` with records whose key-to-split map differs.
+
+    Raises ``RuntimeError`` unless ``allow_resplit`` is set.  A missing file is accepted.
+    """
+    if allow_resplit or not tasks_path.exists():
+        return
+    existing: dict[str, str] = {}
+    for line in tasks_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            record = json.loads(line)
+            existing[record["key"]] = record["split"]
+    proposed = {record["key"]: record["split"] for record in records}
+    if existing == proposed:
+        return
+    moved = sorted(
+        key for key in existing.keys() & proposed.keys() if existing[key] != proposed[key]
+    )
+    dropped = sorted(existing.keys() - proposed.keys())
+    added = sorted(proposed.keys() - existing.keys())
+    leaked = sorted(
+        key for key in moved if existing[key] == "heldout" or proposed[key] == "heldout"
+    )
+    raise RuntimeError(
+        f"refusing to overwrite {tasks_path}: the split would change "
+        f"({len(moved)} tasks change split, {len(leaked)} of them into or out of held-out; "
+        f"{len(dropped)} dropped, {len(added)} added). This usually means validation "
+        "passed a different task set in this environment; re-splitting can move held-out "
+        "tasks into train or the pilot and invalidates the detector and pilot artifacts. "
+        "Use wishrec.materialize to rebuild derived files for the committed split, or pass "
+        "--allow-resplit to accept a new split deliberately. "
+        f"Examples: moved {moved[:5]}, dropped {dropped[:5]}, added {added[:5]}"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     """Parse CLI arguments, run the levels build and return an exit code."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--force", action="store_true", help="redownload and revalidate")
     parser.add_argument("--no-download", action="store_true", help="use cached raw files")
     parser.add_argument("--workers", type=int, default=6, help="validation workers")
-    parser.add_argument("--visible-timeout", type=float, default=60.0)
-    parser.add_argument("--hidden-timeout", type=float, default=180.0)
-    parser.add_argument("--out", type=Path, default=LEVELS_DIR)
+    parser.add_argument(
+        "--visible-timeout", type=float, default=60.0, help="seconds per visible-test run"
+    )
+    parser.add_argument(
+        "--hidden-timeout", type=float, default=180.0, help="seconds per hidden-test run"
+    )
+    parser.add_argument(
+        "--out", type=Path, default=LEVELS_DIR, help="directory for tasks/stats/manifest"
+    )
+    parser.add_argument(
+        "--derived",
+        type=Path,
+        default=None,
+        help=(
+            "directory for derived test files (default: data/derived/levels when --out is "
+            "the default, otherwise <out>/derived)"
+        ),
+    )
+    parser.add_argument(
+        "--allow-resplit",
+        action="store_true",
+        help="allow replacing an existing tasks.jsonl whose split assignment would change",
+    )
     parser.add_argument("--parse-only", action="store_true", help="parse and report only")
     parser.add_argument("--force-validation", action="store_true")
     parser.add_argument(
@@ -313,7 +391,8 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_VISIBLE_TESTS,
         help=(
             "how derived visible tests treat expected results; 'full' keeps them, "
-            "'inputs_only' prints the observed results (default: full)"
+            "'inputs_only' prints the observed results (default: inputs_only, the "
+            "committed protocol)"
         ),
     )
     args = parser.parse_args(argv)
@@ -369,6 +448,8 @@ def main(argv: list[str] | None = None) -> int:
         parsed,
         workers=args.workers,
         force=args.force or args.force_validation,
+        visible_timeout=args.visible_timeout,
+        hidden_timeout=args.hidden_timeout,
     )
     validation_summary["visible_timeout_seconds"] = args.visible_timeout
     validation_summary["hidden_timeout_seconds"] = args.hidden_timeout
@@ -408,12 +489,15 @@ def main(argv: list[str] | None = None) -> int:
     if split_counts != split_info["split_sizes"]:
         raise AssertionError(f"split counts {split_counts} != {split_info['split_sizes']}")
 
-    DERIVED_DIR.mkdir(parents=True, exist_ok=True)
-    for task in kept:
-        write_derived_task(task)
-    print(f"wrote derived tasks to {DERIVED_DIR}", flush=True)
-
     tasks_path = args.out / "tasks.jsonl"
+    check_split_unchanged(tasks_path, records, allow_resplit=args.allow_resplit)
+
+    derived_dir = resolve_derived_dir(args.out, args.derived)
+    derived_dir.mkdir(parents=True, exist_ok=True)
+    for task in kept:
+        write_task_files(task, derived_dir)
+    print(f"wrote derived tasks to {derived_dir}", flush=True)
+
     tasks_sha = write_jsonl(tasks_path, records)
 
     pool_presence = _presence_block(valid)
@@ -513,7 +597,11 @@ def main(argv: list[str] | None = None) -> int:
             "tasks_sha256": tasks_sha,
             "stats_sha256": stats_sha,
             "task_count": len(records),
-            "derived_dir": str(DERIVED_DIR.relative_to(DERIVED_DIR.parents[2])),
+            "derived_dir": (
+                str(derived_dir.resolve().relative_to(REPO_ROOT))
+                if derived_dir.resolve().is_relative_to(REPO_ROOT)
+                else str(derived_dir)
+            ),
         },
         "notes": stats["notes"],
     }

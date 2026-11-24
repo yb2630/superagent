@@ -146,7 +146,7 @@ The extended report [`paper/main.pdf`](paper/main.pdf) is compiled from
 
 ## Development
 
-`make check` runs everything CI runs: ruff lint and format check, mypy and the test suite.
+`make check` runs the Python checks CI runs: ruff lint and format check, mypy and the tests.
 `make format` applies fixes. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, pre-commit
 hooks and commit conventions, and [`ARCHITECTURE.md`](ARCHITECTURE.md) for the module layout
 and data flow.

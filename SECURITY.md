@@ -5,10 +5,9 @@ This is a research code base for a university course project; only the latest co
 
 ## Reporting a vulnerability
 
-Please do not open a public issue. Report privately through
-[GitHub private vulnerability reporting](https://github.com/yb2630/superagent/security/advisories/new)
-with a description, the affected files and steps to reproduce. We aim to respond within a
-week.
+Please do not open a public issue. Email one of the authors listed in `pyproject.toml` at
+their Columbia address with a description, the affected files and steps to reproduce. We aim
+to respond within a week.
 
 ## Scope notes
 

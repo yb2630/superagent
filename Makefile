@@ -37,7 +37,8 @@ format:
 typecheck:
 	$(UV) run mypy
 
-# Everything CI checks, in the order CI runs it.
+# The Python checks CI runs: lint, type-check and tests.  (CI also runs the pre-commit
+# hygiene hooks and, for paper/ changes, the LaTeX build.)
 check: lint typecheck test
 
 # Fit the frozen Qwen3-Embedding detector on the 500 train tasks, calibrate it and write

@@ -44,7 +44,7 @@ def _inner_select_and_calibrate(
     is scored by inner out-of-fold Brier; the winner's inner OOF predictions fit the
     calibrators, and the winner is refitted on all of ``train_idx``.  Returns the
     calibrated predictor, its fit info (with an ``inner_selection`` record), the raw
-    uncalibrated predictor and the selection scores.
+    uncalibrated predictor and the selection record (the winning value and the scores).
     """
     train_idx = np.asarray(train_idx)
     inner = KFold(n_splits=INNER_CALIBRATION_FOLDS, shuffle=True, random_state=seed + 1)

@@ -47,7 +47,7 @@ experimental design (fields, levels, conditions, results) see [`PROJECT.md`](PRO
 | `split.py` | Deterministic task selection and the 500/200/300 + 100 split. |
 | `levels.py` | Level construction (L0–L3 and single-field drops). |
 | `artifacts.py` | Record serialisation, artifact writing and invariant checks. |
-| `materialize.py` | Regenerates the gitignored `data/derived/levels` from committed records. |
+| `materialize.py` | Regenerates and hash-checks `data/derived/levels` (committed) from the level records. |
 | `smoothing.py` | Smoothed-L3 artifact produced by the R2 GPU run. |
 | `build.py` | CLI entry point that runs the R0 pipeline end to end. |
 
@@ -71,8 +71,10 @@ L0 specification; `llm` is the OpenAI-compatible client with native and text too
 ## Design principles
 
 - **Determinism and provenance.** Every artifact records its inputs' hashes; splits and
-  sampling are seeded. The test suite checks committed artifacts against their manifests, so
-  any behavioural change that would alter `results/` fails CI.
+  sampling are seeded. The test suite checks that committed artifacts agree with their
+  manifests and recomputes the report and bootstrap numbers from the committed pilot units.
+  It does not retrain the detector or rebuild the levels, so changes to that code must be
+  checked by rerunning `make detector-smoothed` or `make levels`.
 - **No leakage.** The 300 held-out tasks are never used for training, calibration, threshold
   selection or the pilot; hidden tests never enter the agent workspace.
 - **CPU-first.** Everything except the R2b pilot (vLLM on an A100) runs on CPU, and the

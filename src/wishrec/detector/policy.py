@@ -24,12 +24,14 @@ from .metrics import rank_categories, selection_summary
 
 
 def utility_scores(probabilities: np.ndarray, label_names: tuple[str, ...] = LABELS) -> np.ndarray:
+    """Weight each probability column by its label's question utility."""
     probabilities = np.asarray(probabilities, dtype=np.float64)
     weights = np.asarray([float(UTILITY[label]) for label in label_names], dtype=np.float64)
     return probabilities * weights
 
 
 def utility_selection(probabilities: np.ndarray, threshold: float) -> np.ndarray:
+    """Return the boolean mask of utility scores at or above ``threshold``, never intent."""
     scores = utility_scores(probabilities)
     selected = scores >= float(threshold)
     # Intent has zero utility by construction; never spend a question on it.
@@ -73,6 +75,7 @@ def calibrate_utility_policy(
     low: int = QUESTION_COUNT_RANGE[0],
     high: int = QUESTION_COUNT_RANGE[1],
 ) -> dict:
+    """Calibrate the global utility-score threshold to ``target`` mean questions per task."""
     scores = utility_scores(probabilities)
     calibration = calibrate_threshold(scores, target=target, low=low, high=high)
     calibration["policy"] = "predicted_presence_x_utility"
@@ -82,7 +85,7 @@ def calibrate_utility_policy(
     return calibration
 
 
-def selected_questions(probabilities: np.ndarray, threshold: float):
+def selected_questions(probabilities: np.ndarray, threshold: float) -> list[list[str]]:
     """Return, per row, the selected category names in descending utility-score order."""
     selected = clamp_selection(probabilities, threshold)
     scores = utility_scores(probabilities)
@@ -94,6 +97,7 @@ def selected_questions(probabilities: np.ndarray, threshold: float):
 
 
 def utility_metrics(labels: np.ndarray, selected: np.ndarray) -> dict:
+    """Return precision/recall over informative pairs and utility captured by a selection."""
     y = np.asarray(labels, dtype=np.float64)
     chosen = np.asarray(selected, dtype=bool)
     weights = np.asarray([UTILITY[label] for label in LABELS], dtype=np.float64)
@@ -130,8 +134,18 @@ def policy_summary(
     *,
     threshold: float | None = None,
 ) -> dict:
-    calibration = calibrate_utility_policy(probabilities) if threshold is None else None
-    cutoff = float(calibration["threshold"]) if calibration else float(threshold)
+    """Summarise the clamped question policy against ``labels``.
+
+    Without ``threshold`` the policy threshold is calibrated on ``probabilities`` first and
+    the calibration is included in the summary.
+    """
+    calibration: dict | None
+    if threshold is None:
+        calibration = calibrate_utility_policy(probabilities)
+        cutoff = float(calibration["threshold"])
+    else:
+        calibration = None
+        cutoff = float(threshold)
     selected = clamp_selection(probabilities, cutoff)
     summary = selection_summary(labels, selected)
     summary.update(utility_metrics(labels, selected))

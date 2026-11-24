@@ -16,6 +16,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -45,7 +46,7 @@ from .constants import (
 from .cv import cross_validate, select_deployed_l2
 from .data import kept_label_counts, label_counts, split_counts, train_dataset
 from .encoder import embed_cached, encoder_info
-from .head import fit_linear_head
+from .head import LinearHead, fit_linear_head
 from .metrics import detection_summary
 from .policy import calibrate_utility_policy, policy_summary, selected_questions
 
@@ -53,7 +54,7 @@ DETECTOR_DIR = RESULTS_DIR / "detector"
 
 
 def build_model_dict(
-    head,
+    head: LinearHead,
     calibrators: list[dict],
     *,
     threshold: float,
@@ -61,6 +62,7 @@ def build_model_dict(
     data: dict,
     training: dict,
 ) -> dict:
+    """Assemble the ``model.json`` artifact loaded by :func:`load_detector`."""
     return {
         "format_version": 1,
         "name": f"five-label-silence-detector/{training.get('run_id', 'r1')}",
@@ -95,7 +97,8 @@ def build_model_dict(
 
 
 def _comparison(encoder: dict, baseline: dict) -> dict:
-    result = {}
+    """Return encoder-minus-baseline differences for the headline metrics."""
+    result: dict[str, Any] = {}
     for metric in ("macro_f1", "macro_f1_varying_labels"):
         left = encoder.get(metric)
         right = baseline.get(metric)
@@ -128,6 +131,11 @@ def train_detector(
     smoothing_path: Path | None = None,
     run_id: str = "r1",
 ) -> dict:
+    """Run CV, fit and calibrate the deployed detector and write its artifacts.
+
+    ``embeddings`` bypasses the encoder (used by tests).  Returns the metrics, the model
+    dict and the output directory.
+    """
     data = train_dataset(tasks_path, smoothing_path=smoothing_path)
     Y = np.asarray(data["labels"], dtype=np.float64)
     texts = data["texts"]
@@ -178,7 +186,7 @@ def train_detector(
     }
     smoothing = data.get("smoothing")
     run_label = run_id.upper()
-    metrics = {
+    metrics: dict[str, Any] = {
         "run_id": run_id,
         "created_at": utc_now_iso(),
         "git": git_info(),
@@ -372,15 +380,17 @@ def render_report(metrics: dict, *, run_label: str | None = None) -> str:
         "## Out-of-fold detection (5 folds, inner-fold L2/Platt calibration)",
         "",
         (
-            "| method | macro-F1 | macro-F1 (varying labels) | AUROC examples | AUROC constraints | "
-            "AUROC error | Brier | ECE |"
+            "| method | macro-F1 | macro-F1 (varying labels) | AUROC examples | "
+            "AUROC constraints | AUROC error | Brier | ECE |"
         ),
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for method in ("prior", "tfidf", "encoder"):
         item = detection[method]
         lines.append(
-            "| {method} | {macro} | {macro_varying} | {ex} | {co} | {er} | {brier} | {ece} |".format(
+            (
+                "| {method} | {macro} | {macro_varying} | {ex} | {co} | {er} | {brier} | {ece} |"
+            ).format(
                 method=method,
                 macro=_fmt(item["macro_f1"]),
                 macro_varying=_fmt(item["macro_f1_varying_labels"]),
@@ -465,13 +475,15 @@ def render_report(metrics: dict, *, run_label: str | None = None) -> str:
     return "\n".join(lines)
 
 
-def _fmt(value, digits: int = 3) -> str:
+def _fmt(value: float | None, digits: int = 3) -> str:
+    """Format a metric to ``digits`` decimals, or ``n/a`` when it is undefined."""
     if value is None:
         return "n/a"
     return f"{float(value):.{digits}f}"
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Command-line entry point: train the detector and print its report."""
     parser = argparse.ArgumentParser(
         description="Train the five-label silence detector (raw or R2-smoothed L3)"
     )

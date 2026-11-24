@@ -9,10 +9,12 @@ repeated detector fits do not re-encode.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import threading
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -24,37 +26,49 @@ from .constants import (
     ENCODER_REVISION,
 )
 
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+
+#: Serialises model loading and encoding; the model is shared across threads.
 _LOCK = threading.Lock()
-_MODEL = None
 EMBEDDING_CACHE_DIR = RESULTS_DIR / "cache" / "detector" / "embeddings"
 
 
-def _load_model():
-    global _MODEL
-    with _LOCK:
-        if _MODEL is None:
-            import torch
-            from sentence_transformers import SentenceTransformer
+@functools.cache
+def _build_model() -> SentenceTransformer:
+    """Construct the frozen CPU encoder; cached so it is built at most once."""
+    import torch
+    from sentence_transformers import SentenceTransformer
 
-            # The checkpoint is stored in bfloat16, but CPU bfloat16 inference is
-            # emulated and much slower on this hardware.  float32 is the right CPU
-            # choice and does not change the frozen encoder beyond numeric precision.
-            _MODEL = SentenceTransformer(
-                ENCODER_NAME,
-                device="cpu",
-                model_kwargs={"dtype": torch.float32},
-            )
-            _MODEL.max_seq_length = 512
-            _MODEL.eval()
-        return _MODEL
+    # The checkpoint is stored in bfloat16, but CPU bfloat16 inference is
+    # emulated and much slower on this hardware.  float32 is the right CPU
+    # choice and does not change the frozen encoder beyond numeric precision.
+    model = SentenceTransformer(
+        ENCODER_NAME,
+        device="cpu",
+        model_kwargs={"dtype": torch.float32},
+    )
+    model.max_seq_length = 512
+    model.eval()
+    return model
+
+
+def _load_model() -> SentenceTransformer:
+    """Return the shared encoder, loading it lazily under the module lock."""
+    with _LOCK:
+        return _build_model()
 
 
 def embedding_dimension() -> int:
+    """Load the encoder and check that it produces ``ENCODER_DIM``-dimensional vectors."""
     model = _load_model()
     getter = (
         getattr(model, "get_embedding_dimension", None) or model.get_sentence_embedding_dimension
     )
-    dimension = int(getter())
+    reported = getter()
+    if reported is None:
+        raise RuntimeError(f"{ENCODER_NAME} does not report an embedding dimension")
+    dimension = int(reported)
     if dimension != ENCODER_DIM:
         raise RuntimeError(
             f"{ENCODER_NAME} returned {dimension} dimensions, expected {ENCODER_DIM}"
@@ -63,6 +77,7 @@ def embedding_dimension() -> int:
 
 
 def encode_texts(texts: list[str], *, batch_size: int = ENCODER_BATCH_SIZE) -> np.ndarray:
+    """Encode ``texts`` to L2-normalised float32 embeddings of shape ``(n, ENCODER_DIM)``."""
     if not texts:
         return np.zeros((0, ENCODER_DIM), dtype=np.float32)
     model = _load_model()
@@ -95,6 +110,11 @@ def _cache_key(texts: list[str]) -> str:
 
 
 def embed_cached(texts: list[str], *, cache_dir: Path | None = None) -> np.ndarray:
+    """Return embeddings for ``texts``, reading or writing an ``.npy`` cache file.
+
+    The cache key covers the encoder name, revision and exact text list; a cached file
+    with the wrong shape is ignored and overwritten atomically.
+    """
     directory = Path(cache_dir) if cache_dir else EMBEDDING_CACHE_DIR
     key = _cache_key(texts)
     path = directory / f"{key}.npy"
@@ -111,6 +131,7 @@ def embed_cached(texts: list[str], *, cache_dir: Path | None = None) -> np.ndarr
 
 
 def encoder_info() -> dict:
+    """Return the encoder identity and settings recorded in detector artifacts."""
     return {
         "model": ENCODER_NAME,
         "revision": ENCODER_REVISION,

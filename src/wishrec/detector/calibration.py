@@ -9,8 +9,10 @@ wish.
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 from scipy.optimize import minimize
 
 from .constants import LABELS, TARGET_MEAN_QUESTIONS
@@ -18,12 +20,14 @@ from .constants import LABELS, TARGET_MEAN_QUESTIONS
 EPS = 1e-6
 
 
-def logit(probabilities: np.ndarray, eps: float = EPS) -> np.ndarray:
+def logit(probabilities: npt.ArrayLike, eps: float = EPS) -> np.ndarray:
+    """Return ``log(p / (1 - p))`` elementwise, with ``p`` clipped to ``[eps, 1 - eps]``."""
     p = np.clip(np.asarray(probabilities, dtype=np.float64), eps, 1.0 - eps)
     return np.log(p / (1.0 - p))
 
 
-def sigmoid(logits: np.ndarray) -> np.ndarray:
+def sigmoid(logits: npt.ArrayLike) -> np.ndarray:
+    """Return the logistic function elementwise, clipping logits to ``[-60, 60]``."""
     return 1.0 / (1.0 + np.exp(-np.clip(np.asarray(logits, dtype=np.float64), -60.0, 60.0)))
 
 
@@ -76,6 +80,7 @@ def fit_platt(probabilities: np.ndarray, labels: np.ndarray) -> dict:
 
 
 def apply_platt(probabilities: np.ndarray, parameters: dict) -> np.ndarray:
+    """Apply one fitted Platt calibrator; a constant calibrator returns its base rate."""
     slope = float(parameters.get("slope", 1.0))
     intercept = float(parameters.get("intercept", 0.0))
     if parameters.get("constant"):
@@ -89,12 +94,14 @@ def fit_calibrators(
     *,
     label_names: tuple[str, ...] = LABELS,
 ) -> list[dict]:
+    """Fit one Platt calibrator per label column."""
     return [
         fit_platt(probabilities[:, index], labels[:, index]) for index in range(len(label_names))
     ]
 
 
 def apply_calibrators(probabilities: np.ndarray, calibrators: list[dict]) -> np.ndarray:
+    """Calibrate each label column of ``probabilities`` with its own Platt calibrator."""
     probabilities = np.asarray(probabilities, dtype=np.float64)
     calibrated = np.zeros_like(probabilities)
     for index, parameters in enumerate(calibrators):
@@ -103,6 +110,7 @@ def apply_calibrators(probabilities: np.ndarray, calibrators: list[dict]) -> np.
 
 
 def brier_score(labels: np.ndarray, probabilities: np.ndarray) -> float:
+    """Return the mean squared error between probabilities and binary labels."""
     y = np.asarray(labels, dtype=np.float64)
     p = np.asarray(probabilities, dtype=np.float64)
     return float(np.mean((p - y) ** 2))
@@ -120,7 +128,7 @@ def reliability_table(
         low, high = float(edges[index]), float(edges[index + 1])
         mask = (p >= low) & (p <= high) if index == bins - 1 else (p >= low) & (p < high)
         count = int(mask.sum())
-        row = {
+        row: dict[str, Any] = {
             "bin": index + 1,
             "range": [round(low, 6), round(high, 6)],
             "count": count,
@@ -136,6 +144,7 @@ def reliability_table(
 def expected_calibration_error(
     labels: np.ndarray, probabilities: np.ndarray, *, bins: int = 10
 ) -> float:
+    """Return the count-weighted mean ``|observed - predicted|`` over equal-width bins."""
     rows = reliability_table(labels, probabilities, bins=bins)
     total = sum(row["count"] for row in rows)
     if total == 0:
@@ -151,13 +160,18 @@ def expected_calibration_error(
 
 
 def selection_counts(scores: np.ndarray, threshold: float) -> np.ndarray:
+    """Count, per row, the categories whose score is at least ``threshold``."""
     return (np.asarray(scores, dtype=np.float64) >= float(threshold)).sum(axis=1)
 
 
 def question_count_distribution(scores: np.ndarray, threshold: float) -> dict:
+    """Map each per-row selection count (as a string) to how many rows have it."""
     counts = selection_counts(scores, threshold)
     values, frequencies = np.unique(counts, return_counts=True)
-    return {str(int(value)): int(frequency) for value, frequency in zip(values, frequencies)}
+    return {
+        str(int(value)): int(frequency)
+        for value, frequency in zip(values, frequencies, strict=True)
+    }
 
 
 def calibrate_threshold(

@@ -20,6 +20,7 @@ TASKS_PATH = LEVELS_DIR / "tasks.jsonl"
 
 
 def load_records(*, split: str = "train", tasks_path: Path | None = None) -> list[dict]:
+    """Return the level records of one ``split``, sorted by task key."""
     records = read_jsonl(tasks_path or TASKS_PATH)
     selected = [record for record in records if record["split"] == split]
     selected.sort(key=lambda record: record["key"])
@@ -27,6 +28,7 @@ def load_records(*, split: str = "train", tasks_path: Path | None = None) -> lis
 
 
 def label_matrix(records: list[dict]) -> np.ndarray:
+    """Return the ``(n_records, n_labels)`` 0/1 matrix of L0 field presence."""
     return np.asarray(
         [[float(bool(record["field_presence"][label])) for label in LABELS] for record in records],
         dtype=np.float64,
@@ -34,10 +36,12 @@ def label_matrix(records: list[dict]) -> np.ndarray:
 
 
 def wishes(records: list[dict]) -> list[str]:
+    """Return each record's raw L3 wish text."""
     return [str(record["levels"]["L3"]) for record in records]
 
 
 def label_counts(Y: np.ndarray) -> dict[str, int]:
+    """Return the number of positive rows per label."""
     matrix = np.asarray(Y)
     return {label: int(matrix[:, index].sum()) for index, label in enumerate(LABELS)}
 
@@ -46,7 +50,7 @@ def train_dataset(
     tasks_path: Path | None = None,
     smoothing_path: Path | SmoothingArtifact | None = None,
 ) -> dict:
-    """The 500 train records, optionally with smoothed L3 wishes.
+    """Load the 500 train records, optionally with smoothed L3 wishes.
 
     ``smoothing_path`` points at the R2 ``wishes.jsonl`` artifact.  The committed R0
     records are not modified; the overlay is applied in memory and the artifact SHA-256
@@ -106,10 +110,12 @@ def _sha256_file(path: Path) -> str:
 
 
 def kept_label_counts(tasks_path: Path | None = None) -> dict[str, int]:
+    """Return positive counts per label across every kept task in all splits."""
     return label_counts(label_matrix(read_jsonl(tasks_path or TASKS_PATH)))
 
 
 def split_counts(tasks_path: Path | None = None) -> dict[str, int]:
+    """Return the number of kept tasks in each split."""
     records = read_jsonl(tasks_path or TASKS_PATH)
     counts: dict[str, int] = {}
     for record in records:

@@ -1,0 +1,35 @@
+name: Bug report
+description: Something is broken or produces wrong results.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you ran, what you expected and what you got.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. uv sync --frozen
+        2. make ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      render: shell
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: Output of `git rev-parse --short HEAD`.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [data / levels, detector, harness, paper, CI / tooling, other]

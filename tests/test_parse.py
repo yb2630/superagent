@@ -278,10 +278,12 @@ def test_humaneval_for_example_block_is_not_prose():
 
 
 def test_humaneval_full_visible_test_is_unchanged():
+    # The default is the committed inputs_only protocol; full mode keeps expected results.
     default = parse_task("humanevalplus", HUMANEVAL_104_ROW)
+    inputs_only = parse_task("humanevalplus", HUMANEVAL_104_ROW, visible_tests="inputs_only")
     full = parse_task("humanevalplus", HUMANEVAL_104_ROW, visible_tests="full")
-    assert default.visible_test == full.visible_test
-    assert default.visible_asserts == full.visible_asserts
+    assert default.visible_test == inputs_only.visible_test
+    assert default.visible_test != full.visible_test
     assert "results = [[1, 15, 33], [], [33, 111]]" in full.visible_test
     assert "assertion(unique_digits(*[[15, 33, 1422, 1]]), [1, 15, 33], 0)" in (
         full.visible_asserts
@@ -322,7 +324,7 @@ def test_humaneval_ref_func_is_rejected():
 
 
 def test_mbpp_parse():
-    task = parse_task("mbppplus", MBPP_ROW)
+    task = parse_task("mbppplus", MBPP_ROW, visible_tests="full")
     assert task.entry_point == "double"
     assert task.fields["intent"] == "Return double the input."
     assert "x is positive." in task.fields["constraints"]

@@ -171,7 +171,6 @@ def assign_splits(
     by_source: dict[str, dict[str, int]] = {name: {} for name in SPLIT_ORDER}
     for split in SPLIT_ORDER:
         size = targets[split]
-        sum(remaining.values())
         quotas = apportion(size, remaining, caps=remaining)
         for source in SOURCE_ORDER:
             count = quotas[source]

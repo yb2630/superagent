@@ -201,7 +201,9 @@ def _cache_path(cache_key: str) -> Path:
     return CACHE_DIR / "validation" / f"{cache_key}.json"
 
 
-def _cache_key(task: ParsedTask) -> str:
+def _cache_key(task: ParsedTask, *, visible_timeout: float, hidden_timeout: float) -> str:
+    # The timeouts are part of the key: a Timeout cached under a short limit must not be
+    # reused when the build is rerun with a longer one.
     payload = {
         "key": task.key,
         "validator": VALIDATOR_VERSION,
@@ -209,6 +211,8 @@ def _cache_key(task: ParsedTask) -> str:
         "canonical": _sha256(task.canonical_solution),
         "visible": _sha256(task.visible_test),
         "hidden": _sha256(task.hidden_test),
+        "visible_timeout": visible_timeout,
+        "hidden_timeout": hidden_timeout,
     }
     return _sha256(json.dumps(payload, sort_keys=True))
 
@@ -248,7 +252,7 @@ def validate_task(
     A cached result is reused unless ``use_cache`` is false or ``force`` is set; every fresh
     result is written back to the cache.
     """
-    cache_key = _cache_key(task)
+    cache_key = _cache_key(task, visible_timeout=visible_timeout, hidden_timeout=hidden_timeout)
     cache_file = _cache_path(cache_key)
     if use_cache and not force and cache_file.exists():
         try:
@@ -318,14 +322,27 @@ def validate_all(
     force: bool = False,
     use_cache: bool = True,
     progress_every: int = 25,
+    visible_timeout: float = 60.0,
+    hidden_timeout: float = 180.0,
 ) -> tuple[dict[str, ValidationResult], dict]:
-    """Validate every task, returning results keyed by task key plus summary counts."""
+    """Validate every task, returning results keyed by task key plus summary counts.
+
+    ``visible_timeout`` and ``hidden_timeout`` (seconds) are passed to every
+    :func:`validate_task` call.
+    """
     results: dict[str, ValidationResult] = {}
     ordered = sorted(tasks, key=lambda task: task.key)
     started = time.monotonic()
     with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
         futures = {
-            executor.submit(validate_task, task, use_cache=use_cache, force=force): task
+            executor.submit(
+                validate_task,
+                task,
+                visible_timeout=visible_timeout,
+                hidden_timeout=hidden_timeout,
+                use_cache=use_cache,
+                force=force,
+            ): task
             for task in ordered
         }
         for index, future in enumerate(as_completed(futures), 1):

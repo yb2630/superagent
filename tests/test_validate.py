@@ -124,3 +124,30 @@ def test_result_dict_is_json_serialisable():
     data = result.to_dict()
     assert data["ok"] is True
     assert "cached" not in data
+
+
+SLOW_VISIBLE = "import time\ntime.sleep(0.6)\n" + PASSING_VISIBLE
+
+
+def test_cached_timeout_is_not_reused_under_a_longer_timeout():
+    task = make_task(visible_test=SLOW_VISIBLE)
+    short = validate_task(task, visible_timeout=0.2, use_cache=True)
+    assert short.exception == "Timeout"
+    longer = validate_task(task, visible_timeout=10.0, use_cache=True)
+    assert longer.cached is False
+    assert longer.ok
+
+
+def test_validate_all_threads_the_timeouts(monkeypatch):
+    seen: list[dict] = []
+
+    def fake_validate_task(task, **kwargs):
+        seen.append(kwargs)
+        return ValidationResult(ok=True)
+
+    monkeypatch.setattr(validate_module, "validate_task", fake_validate_task)
+    validate_module.validate_all(
+        [make_task()], workers=1, visible_timeout=1.5, hidden_timeout=2.5, progress_every=1
+    )
+    assert seen[0]["visible_timeout"] == 1.5
+    assert seen[0]["hidden_timeout"] == 2.5
